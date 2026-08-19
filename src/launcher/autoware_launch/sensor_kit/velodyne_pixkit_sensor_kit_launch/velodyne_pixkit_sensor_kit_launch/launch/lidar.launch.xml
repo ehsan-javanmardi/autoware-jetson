@@ -1,0 +1,114 @@
+<launch>
+  <arg name="launch_driver" default="true"/>
+
+  <!-- Host address that sensors send their UDP data to. The shipped Pixkit default was
+       192.168.1.102; this machine's sensor-LAN address is 192.168.1.100 (enp3s0). -->
+  <arg name="host_ip" default="192.168.1.100"/>
+
+  <!-- Lidar selection. This vehicle currently has a single Ouster OS-1 at 192.168.1.126.
+       The original Pixkit config launched four Velodyne VLP16s (192.168.1.201-204) and never
+       referenced the os_sensor_*.launch.xml files that ship in this package. Set
+       use_velodyne:=true / use_ouster:=false to restore the original behaviour. -->
+  <arg name="use_ouster" default="true"/>
+  <arg name="use_velodyne" default="false"/>
+  <arg name="ouster_ip" default="192.168.1.126" description="Ouster OS-1 sensor address"/>
+
+  <arg name="use_concat_filter" default="true"/>
+  <arg name="vehicle_id" default="$(env VEHICLE_ID default)"/>
+  <arg name="vehicle_mirror_param_file"/>
+  <arg name="pointcloud_container_name" default="pointcloud_container"/>
+  <group>
+    <push-ros-namespace namespace="lidar"/>
+
+    <!-- Ouster OS-1 (top) -->
+    <group if="$(var use_ouster)">
+      <include file="$(find-pkg-share velodyne_pixkit_sensor_kit_launch)/launch/os_sensor_top.launch.xml">
+        <arg name="sensor_hostname_top" value="$(var ouster_ip)"/>
+        <arg name="udp_dest" value="$(var host_ip)"/>
+        <arg name="viz" value="false"/>
+      </include>
+    </group>
+
+    <!-- Original Velodyne VLP16 configuration, disabled by default (no VLP16 is connected) -->
+    <group if="$(var use_velodyne)">
+
+
+      <group>
+        <push-ros-namespace namespace="top"/>
+        <include file="$(find-pkg-share common_sensor_launch)/launch/velodyne_VLP16.launch.xml">
+          <arg name="max_range" value="250.0"/>
+          <arg name="sensor_frame" value="velodyne_top"/>
+          <arg name="sensor_ip" value="192.168.1.201"/>
+          <arg name="host_ip" value="$(var host_ip)"/>
+          <arg name="data_port" value="2368"/>
+          <arg name="scan_phase" value="300.0"/>
+          <arg name="launch_driver" value="$(var launch_driver)"/>
+          <arg name="vehicle_mirror_param_file" value="$(var vehicle_mirror_param_file)"/>
+          <arg name="container_name" value="pointcloud_container"/>
+        </include>
+      </group>
+
+      <group>
+        <push-ros-namespace namespace="left"/>
+        <include file="$(find-pkg-share common_sensor_launch)/launch/velodyne_VLP16.launch.xml">
+          <arg name="max_range" value="5.0"/>
+          <arg name="sensor_frame" value="velodyne_left"/>
+          <arg name="sensor_ip" value="192.168.1.202"/>
+          <arg name="host_ip" value="$(var host_ip)"/>
+          <arg name="data_port" value="2369"/>
+          <arg name="scan_phase" value="180.0"/>
+          <arg name="cloud_min_angle" value="300"/>
+          <arg name="cloud_max_angle" value="60"/>
+          <arg name="launch_driver" value="$(var launch_driver)"/>
+          <arg name="vehicle_mirror_param_file" value="$(var vehicle_mirror_param_file)"/>
+          <arg name="container_name" value="pointcloud_container"/>
+        </include>
+      </group>
+
+      <group>
+        <push-ros-namespace namespace="right"/>
+        <include file="$(find-pkg-share common_sensor_launch)/launch/velodyne_VLP16.launch.xml">
+          <arg name="max_range" value="5.0"/>
+          <arg name="sensor_frame" value="velodyne_right"/>
+          <arg name="sensor_ip" value="192.168.1.203"/>
+          <arg name="host_ip" value="$(var host_ip)"/>
+          <arg name="data_port" value="2370"/>
+          <arg name="scan_phase" value="180.0"/>
+          <arg name="cloud_min_angle" value="300"/>
+          <arg name="cloud_max_angle" value="60"/>
+          <arg name="launch_driver" value="$(var launch_driver)"/>
+          <arg name="vehicle_mirror_param_file" value="$(var vehicle_mirror_param_file)"/>
+          <arg name="container_name" value="pointcloud_container"/>
+        </include>
+      </group>
+
+      <group>
+        <push-ros-namespace namespace="rear"/>
+        <include file="$(find-pkg-share common_sensor_launch)/launch/velodyne_VLP16.launch.xml">
+          <arg name="max_range" value="1.5"/>
+          <arg name="sensor_frame" value="velodyne_rear"/>
+          <arg name="sensor_ip" value="192.168.1.204"/>
+          <arg name="host_ip" value="$(var host_ip)"/>
+          <arg name="data_port" value="2371"/>
+          <arg name="scan_phase" value="180.0"/>
+          <arg name="cloud_min_angle" value="300"/>
+          <arg name="cloud_max_angle" value="60"/>
+          <arg name="launch_driver" value="$(var launch_driver)"/>
+          <arg name="vehicle_mirror_param_file" value="$(var vehicle_mirror_param_file)"/>
+          <arg name="container_name" value="pointcloud_container"/>
+        </include>
+      </group>
+    </group>
+
+    <include file="$(find-pkg-share velodyne_pixkit_sensor_kit_launch)/launch/pointcloud_preprocessor.launch.py">
+      <arg name="base_frame" value="base_link"/>
+      <arg name="use_intra_process" value="true"/>
+      <arg name="use_multithread" value="true"/>
+      <arg name="pointcloud_container_name" value="$(var pointcloud_container_name)"/>
+      <!-- Use this sensor kit's own concat config (single Ouster input) instead of the
+           sample_sensor_kit default, which expects three Velodyne topics. -->
+      <arg name="concatenate_and_time_sync_node_param_path"
+           value="$(find-pkg-share velodyne_pixkit_sensor_kit_launch)/config/concatenate_and_time_sync_node.param.yaml"/>
+    </include>
+  </group>
+</launch>

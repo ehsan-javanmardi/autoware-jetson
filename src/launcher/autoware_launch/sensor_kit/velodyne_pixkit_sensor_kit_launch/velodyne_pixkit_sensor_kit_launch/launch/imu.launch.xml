@@ -1,0 +1,25 @@
+<launch>
+  <arg name="launch_driver" default="true"/>
+
+  <group>
+    <push-ros-namespace namespace="imu"/>
+
+    <!-- <group>
+      <push-ros-namespace namespace="ouster"/>
+      <node pkg="topic_tools" exec="relay" name="imu_relay" output="log">
+        <param name="input_topic" value="/fixposition/corrimu"/>
+        <param name="output_topic" value="imu_raw"/>
+        <param name="type" value="sensor_msgs/msg/Imu"/>
+        <param name="reliability" value="best_effort"/>
+      </node>
+    </group> -->
+
+    <include file="$(find-pkg-share autoware_imu_corrector)/launch/imu_corrector.launch.xml">
+      <arg name="input_topic" value="/sensing/gnss/chc/imu"/>
+      <!-- <arg name="input_topic" value="/sensing/lidar/top/ouster/imu"/> -->
+      <!-- <arg name="input_topic" value="/fixposition/corrimu"/> -->
+      <arg name="output_topic" value="imu_data"/>
+      <arg name="param_file" value="$(find-pkg-share autoware_imu_corrector)/config/imu_corrector.param.yaml"/>
+    </include>
+  </group>
+</launch>

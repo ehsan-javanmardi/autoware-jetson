@@ -1,0 +1,29 @@
+# Concatenate/time-sync config for the single-Ouster Pixkit setup.
+#
+# Original Pixkit values expected three lidars:
+#   "/sensing/lidar/right/pointcloud_before_sync"
+#   "/sensing/lidar/top/outlier_filtered/pointcloud"
+#   "/sensing/lidar/left/pointcloud_before_sync"
+# Only one Ouster OS-1 (192.168.1.126) is connected, and no Velodyne preprocessing chain
+# runs, so the only available cloud is the driver's raw output. The offsets/noise-window
+# arrays must have one entry per input topic.
+/**:
+  ros__parameters:
+    debug_mode: false
+    rosbag_length: 10.0
+    maximum_queue_size: 5
+    timeout_sec: 0.2
+    is_motion_compensated: true
+    publish_synchronized_pointcloud: true
+    keep_input_frame_in_synchronized_pointcloud: true
+    publish_previous_but_late_pointcloud: false
+    synchronized_pointcloud_postfix: pointcloud
+    input_twist_topic_type: twist
+    input_topics: [
+                    "/sensing/lidar/top/ouster/points",
+                ]
+    output_frame: base_link
+    matching_strategy:
+      type: advanced
+      lidar_timestamp_offsets: [0.0]
+      lidar_timestamp_noise_window: [0.01]

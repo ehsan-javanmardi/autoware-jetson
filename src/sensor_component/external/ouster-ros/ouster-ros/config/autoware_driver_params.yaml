@@ -1,0 +1,59 @@
+# Parameters for running the driver as an Autoware sensing component.
+#
+# Usage:
+#   ros2 launch ouster_ros driver.launch.py \
+#       params_file:=$(ros2 pkg prefix ouster_ros)/share/ouster_ros/config/autoware_driver_params.yaml \
+#       sensor_hostname:=<sensor ip>
+#
+# The wildcard key applies the parameters regardless of the namespace the node
+# is pushed into, which is what sensor kits normally do.
+/**:
+  ros__parameters:
+    # Publish autoware::point_types::PointXYZIRCAEDT. Autoware compares the
+    # field names, datatypes and byte offsets of the incoming cloud against its
+    # own struct, and silently discards intensity, channel and the per point
+    # timestamps of any cloud that doesn't match.
+    point_type: xyzircaedt
+
+    # Which sensor channel to report as Autoware's uint8 intensity. reflectivity
+    # is already 0-255, is calibrated, and is present on every udp profile.
+    # Use 'signal' (photon count) or 'near_ir' if the application calls for it,
+    # both need intensity_scale to bring them into the 0-255 range.
+    intensity_source: reflectivity
+    intensity_scale: 1.0
+
+    # Unorganized output. An organized cloud keeps one point per beam/column
+    # including the ones that had no return, and those are emitted as NaN.
+    # Autoware's concatenate node copies points verbatim, so the NaNs would
+    # propagate into ground segmentation and scan matching.
+    organized: false
+
+    # The sensor kit URDF is the single source of truth for the sensor frames.
+    # Leaving this true makes the driver publish a second static transform with
+    # the same child frame as the URDF, giving that frame two parents and
+    # breaking every lookup that goes through it.
+    pub_static_tf: false
+
+    # PTP gives the point cloud a header stamp that is on the same clock as the
+    # rest of the system, which is what distortion correction and the
+    # concatenate node's time matching assume. TIME_FROM_ROS_TIME works but
+    # stamps the cloud with the arrival time of the first packet instead.
+    timestamp_mode: TIME_FROM_PTP_1588
+    ptp_utc_tai_offset: -37.0
+
+    # Autoware subscribes with SensorDataQoS, keep the driver on sensor data QoS
+    # so the two are compatible.
+    use_system_default_qos: false
+
+    # Autoware only consumes the point cloud and the imu. Dropping the rest
+    # avoids paying for messages that nothing subscribes to.
+    proc_mask: PCL|IMU
+
+    # Drop returns from the sensor housing and the vehicle roof right at the
+    # source. Raise this to match the vehicle if needed.
+    min_range: 0.5
+    max_range: 1000.0
+
+    destagger: true
+    lidar_mode: 1024x10
+    udp_profile_lidar: RNG19_RFL8_SIG16_NIR16

@@ -1,0 +1,69 @@
+#!/bin/bash
+# Launch Autoware on the Pixkit 2.0 with a Velodyne VLP LiDAR.
+#
+# Adapted from Pixkit_Autoware/autoware_velodyne_kashiwa.sh: the upstream copy
+# hardcoded /home/autoware/pixkit_autoware_0.45.1, which does not exist here.
+#
+# Usage:  ./autoware_velodyne_kashiwa.sh [map_dir]
+# Default map dir: ../autoware_map  (override with $1 or $AUTOWARE_MAP_PATH)
+set -e
+
+AUTOWARE_WS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+MAP_PATH="${1:-${AUTOWARE_MAP_PATH:-$(cd "$AUTOWARE_WS/.." && pwd)/autoware_map}}"
+
+if [ ! -f "$AUTOWARE_WS/install/setup.bash" ]; then
+    echo "error: $AUTOWARE_WS/install/setup.bash not found - build first:" >&2
+    echo "  cd $AUTOWARE_WS && colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release" >&2
+    exit 1
+fi
+
+if [ ! -d "$MAP_PATH" ]; then
+    echo "error: map directory not found: $MAP_PATH" >&2
+    exit 1
+fi
+
+# Autoware defaults pointcloud_map_file to "pointcloud_map.pcd"; this map ships as
+# kashiwanoha_binary_MGRS_v2.pcd, so detect whatever .pcd is actually present.
+PCD_FILE="$(cd "$MAP_PATH" && ls -1 *.pcd 2>/dev/null | head -n1)"
+if [ -z "$PCD_FILE" ]; then
+    echo "error: no .pcd point cloud map found in $MAP_PATH" >&2
+    exit 1
+fi
+
+LANELET_FILE="$(cd "$MAP_PATH" && ls -1 *.osm 2>/dev/null | head -n1)"
+if [ -z "$LANELET_FILE" ]; then
+    echo "error: no .osm lanelet2 map found in $MAP_PATH" >&2
+    exit 1
+fi
+
+if [ ! -f "$MAP_PATH/map_projector_info.yaml" ]; then
+    echo "warning: $MAP_PATH/map_projector_info.yaml missing - Autoware will fall back" >&2
+    echo "         to deriving projection from the lanelet2 map (deprecated)." >&2
+fi
+
+echo "workspace : $AUTOWARE_WS"
+echo "map       : $MAP_PATH"
+echo "pointcloud: $PCD_FILE"
+echo "lanelet2  : $LANELET_FILE"
+
+# --- DDS environment -------------------------------------------------------------
+# Pin this explicitly rather than relying on ~/.bashrc: that file is only sourced by
+# interactive shells, so launching from a desktop icon or a non-interactive script
+# would otherwise fall back to the default RMW (fastrtps) while CLI shells use
+# cyclonedds. Two different middlewares cannot see each other, which shows up as
+# service calls timing out while `ros2 topic list` looks fine.
+export RMW_IMPLEMENTATION="${RMW_IMPLEMENTATION:-rmw_cyclonedds_cpp}"
+# ROS_LOCALHOST_ONLY is intentionally not set - see ~/.config/environment.d/10-ros-dds.conf
+unset ROS_LOCALHOST_ONLY
+
+echo "rmw       : $RMW_IMPLEMENTATION"
+
+source "$AUTOWARE_WS/install/setup.bash"
+
+ros2 launch autoware_launch autoware.launch.xml \
+    vehicle_model:=pixkit \
+    sensor_model:=velodyne_pixkit_sensor_kit \
+    map_path:="$MAP_PATH" \
+    pointcloud_map_file:="$PCD_FILE" \
+    lanelet2_map_file:="$LANELET_FILE" \
+    log_level:=debug

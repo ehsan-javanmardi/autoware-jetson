@@ -1,0 +1,179 @@
+<?xml version="1.0"?>
+<robot name="vehicle"
+  xmlns:xacro="http://ros.org/wiki/xacro">
+  <link name="zed_base_link" />
+  <!-- <link name="base_link" />  -->
+  <link name="rs16" />
+  <link name="rsbp" />
+  <link name="gnss" />
+  <link name="ultrasonic_0" />
+  <link name="ultrasonic_1" />
+  <link name="ultrasonic_2" />
+  <link name="ultrasonic_3" />
+  <link name="ultrasonic_4" />
+  <link name="ultrasonic_5" />
+  <link name="ultrasonic_6" />
+  <link name="ultrasonic_7" />
+
+  <link name="ultrasonic_8" />
+  <link name="ultrasonic_9" />
+  <link name="ultrasonic_10" />
+  <link name="ultrasonic_11" />
+
+  <link name="camera" />
+
+  <link name="os_lidar_top" />
+  <link name="os_lidar_rl" />
+  <link name="os_lidar_rr" />
+
+  <xacro:arg name="config_dir" default="$(find velodyne_pixkit_sensor_kit_description)"/>
+  <xacro:property name="calibration" value="${xacro.load_yaml('$(arg config_dir)/sensors_calibration.yaml')}"/>
+
+  <!-- sensor kit -->
+  <xacro:include filename="sensor_kit.xacro"/>
+  <xacro:sensor_kit_macro
+    parent="base_link"
+    x="${calibration['base_link']['sensor_kit_base_link']['x']}"
+    y="${calibration['base_link']['sensor_kit_base_link']['y']}"
+    z="${calibration['base_link']['sensor_kit_base_link']['z']}"
+    roll="${calibration['base_link']['sensor_kit_base_link']['roll']}"
+    pitch="${calibration['base_link']['sensor_kit_base_link']['pitch']}"
+    yaw="${calibration['base_link']['sensor_kit_base_link']['yaw']}"
+  />
+
+  <!-- embedded sensors -->
+  <xacro:include filename="$(find velodyne_description)/urdf/VLP-16.urdf.xacro"/>
+  <xacro:VLP-16 parent="base_link" name="velodyne_rear" topic="velodyne_rear/velodyne_points" hz="10" samples="220" gpu="false">
+    <origin
+      xyz="${calibration['base_link']['velodyne_rear_base_link']['x']}
+           ${calibration['base_link']['velodyne_rear_base_link']['y']}
+           ${calibration['base_link']['velodyne_rear_base_link']['z']}"
+      rpy="${calibration['base_link']['velodyne_rear_base_link']['roll']}
+           ${calibration['base_link']['velodyne_rear_base_link']['pitch']}
+           ${calibration['base_link']['velodyne_rear_base_link']['yaw']}"
+    />
+  </xacro:VLP-16>
+
+  <!-- pixkit muti lidar -->
+  <joint name="os_lidar_top2os_lidar_rl" type="fixed">
+    <parent link="os_lidar_top" />
+    <child link="os_lidar_rl" />
+    <origin 
+      xyz="
+        ${calibration['os_lidar_top2os_lidar_rl']['x']} 
+        ${calibration['os_lidar_top2os_lidar_rl']['y']} 
+        ${calibration['os_lidar_top2os_lidar_rl']['z']}" 
+      rpy="
+        ${calibration['os_lidar_top2os_lidar_rl']['roll']} 
+        ${calibration['os_lidar_top2os_lidar_rl']['pitch']} 
+        ${calibration['os_lidar_top2os_lidar_rl']['yaw']}" />
+  </joint>
+
+  <joint name="os_lidar_top2os_lidar_rr" type="fixed">
+    <parent link="os_lidar_top" />
+    <child link="os_lidar_rr" />
+    <origin 
+        xyz="
+          ${calibration['os_lidar_top2os_lidar_rr']['x']} 
+          ${calibration['os_lidar_top2os_lidar_rr']['y']} 
+          ${calibration['os_lidar_top2os_lidar_rr']['z']}" 
+        rpy="
+          ${calibration['os_lidar_top2os_lidar_rr']['roll']} 
+          ${calibration['os_lidar_top2os_lidar_rr']['pitch']} 
+          ${calibration['os_lidar_top2os_lidar_rr']['yaw']}" />
+  </joint>
+
+ <!-- embedded sensors -->
+  <joint name="baselink_os_lidar_top" type="fixed">
+    <parent link="base_link" />
+    <child link="os_lidar_top" />
+    <origin xyz="${calibration['base_link2os_lidar_top']['x']} ${calibration['base_link2os_lidar_top']['y']} ${calibration['base_link2os_lidar_top']['z']}" rpy="${calibration['base_link2os_lidar_top']['roll']} ${calibration['base_link2os_lidar_top']['pitch']} ${calibration['base_link2os_lidar_top']['yaw']}" />
+  </joint>
+  <joint name="zed_baselink" type="fixed">
+    <parent link="base_link" />
+    <child link="zed_base_link" />
+    <origin xyz="${calibration['base_link2zed']['x']} ${calibration['base_link2zed']['y']} ${calibration['base_link2zed']['z']}" rpy="${calibration['base_link2zed']['roll']} ${calibration['base_link2zed']['pitch']} ${calibration['base_link2zed']['yaw']}" />
+    </joint>
+  <joint name="baselink_rsbp" type="fixed">
+    <parent link="base_link" />
+    <child link="rsbp" />
+    <origin xyz="${calibration['base_link2rsbp']['x']} ${calibration['base_link2rsbp']['y']} ${calibration['base_link2rsbp']['z']}" rpy="${calibration['base_link2rsbp']['roll']} ${calibration['base_link2rsbp']['pitch']} ${calibration['base_link2rsbp']['yaw']}" />
+  </joint>
+  <joint name="baselink_rs16" type="fixed">
+    <parent link="base_link" />
+    <child link="rs16" />
+    <origin xyz="${calibration['base_link2rs16']['x']} ${calibration['base_link2rs16']['y']} ${calibration['base_link2rs16']['z']}" rpy="${calibration['base_link2rs16']['roll']} ${calibration['base_link2rs16']['pitch']} ${calibration['base_link2rs16']['yaw']}" />
+  </joint>
+  <joint name="baselink_gnss" type="fixed">
+    <parent link="base_link" />
+    <child link="gnss" />
+    <origin xyz="${calibration['base_link2gnss']['x']} ${calibration['base_link2gnss']['y']} ${calibration['base_link2gnss']['z']}" rpy="${calibration['base_link2gnss']['roll']} ${calibration['base_link2gnss']['pitch']} ${calibration['base_link2gnss']['yaw']}" />
+  </joint>
+  <joint name="baselink_ultrasonic_0" type="fixed">
+    <parent link="base_link" />
+    <child link="ultrasonic_0" />
+    <origin xyz="${calibration['base_link2ultrasonic_0']['x']} ${calibration['base_link2ultrasonic_0']['y']} ${calibration['base_link2ultrasonic_0']['z']}" rpy="${calibration['base_link2ultrasonic_0']['roll']} ${calibration['base_link2ultrasonic_0']['pitch']} ${calibration['base_link2ultrasonic_0']['yaw']}" />
+  </joint>
+  <joint name="baselink_ultrasonic_1" type="fixed">
+    <parent link="base_link" />
+    <child link="ultrasonic_1" />
+    <origin xyz="${calibration['base_link2ultrasonic_1']['x']} ${calibration['base_link2ultrasonic_1']['y']} ${calibration['base_link2ultrasonic_1']['z']}" rpy="${calibration['base_link2ultrasonic_1']['roll']} ${calibration['base_link2ultrasonic_1']['pitch']} ${calibration['base_link2ultrasonic_1']['yaw']}" />
+  </joint>
+  <joint name="baselink_ultrasonic_2" type="fixed">
+    <parent link="base_link" />
+    <child link="ultrasonic_2" />
+    <origin xyz="${calibration['base_link2ultrasonic_2']['x']} ${calibration['base_link2ultrasonic_2']['y']} ${calibration['base_link2ultrasonic_2']['z']}" rpy="${calibration['base_link2ultrasonic_2']['roll']} ${calibration['base_link2ultrasonic_2']['pitch']} ${calibration['base_link2ultrasonic_2']['yaw']}" />
+  </joint>
+  <joint name="baselink_ultrasonic_3" type="fixed">
+    <parent link="base_link" />
+    <child link="ultrasonic_3" />
+    <origin xyz="${calibration['base_link2ultrasonic_3']['x']} ${calibration['base_link2ultrasonic_3']['y']} ${calibration['base_link2ultrasonic_3']['z']}" rpy="${calibration['base_link2ultrasonic_3']['roll']} ${calibration['base_link2ultrasonic_3']['pitch']} ${calibration['base_link2ultrasonic_3']['yaw']}" />
+  </joint>
+  <joint name="baselink_ultrasonic_4" type="fixed">
+    <parent link="base_link" />
+    <child link="ultrasonic_4" />
+    <origin xyz="${calibration['base_link2ultrasonic_4']['x']} ${calibration['base_link2ultrasonic_4']['y']} ${calibration['base_link2ultrasonic_4']['z']}" rpy="${calibration['base_link2ultrasonic_4']['roll']} ${calibration['base_link2ultrasonic_4']['pitch']} ${calibration['base_link2ultrasonic_4']['yaw']}" />
+  </joint>
+  <joint name="baselink_ultrasonic_5" type="fixed">
+    <parent link="base_link" />
+    <child link="ultrasonic_5" />
+    <origin xyz="${calibration['base_link2ultrasonic_5']['x']} ${calibration['base_link2ultrasonic_5']['y']} ${calibration['base_link2ultrasonic_5']['z']}" rpy="${calibration['base_link2ultrasonic_5']['roll']} ${calibration['base_link2ultrasonic_5']['pitch']} ${calibration['base_link2ultrasonic_5']['yaw']}" />
+  </joint>
+  <joint name="baselink_ultrasonic_6" type="fixed">
+    <parent link="base_link" />
+    <child link="ultrasonic_6" />
+    <origin xyz="${calibration['base_link2ultrasonic_6']['x']} ${calibration['base_link2ultrasonic_6']['y']} ${calibration['base_link2ultrasonic_6']['z']}" rpy="${calibration['base_link2ultrasonic_6']['roll']} ${calibration['base_link2ultrasonic_6']['pitch']} ${calibration['base_link2ultrasonic_6']['yaw']}" />
+  </joint>
+  <joint name="baselink_ultrasonic_7" type="fixed">
+    <parent link="base_link" />
+    <child link="ultrasonic_7" />
+    <origin xyz="${calibration['base_link2ultrasonic_7']['x']} ${calibration['base_link2ultrasonic_7']['y']} ${calibration['base_link2ultrasonic_7']['z']}" rpy="${calibration['base_link2ultrasonic_7']['roll']} ${calibration['base_link2ultrasonic_7']['pitch']} ${calibration['base_link2ultrasonic_7']['yaw']}" />
+  </joint>
+
+   <joint name="baselink_ultrasonic_8" type="fixed">
+    <parent link="base_link" />
+    <child link="ultrasonic_8" />
+    <origin xyz="${calibration['base_link2ultrasonic_8']['x']} ${calibration['base_link2ultrasonic_8']['y']} ${calibration['base_link2ultrasonic_8']['z']}" rpy="${calibration['base_link2ultrasonic_8']['roll']} ${calibration['base_link2ultrasonic_8']['pitch']} ${calibration['base_link2ultrasonic_8']['yaw']}" />
+  </joint>
+  <joint name="baselink_ultrasonic_9" type="fixed">
+    <parent link="base_link" />
+    <child link="ultrasonic_9" />
+    <origin xyz="${calibration['base_link2ultrasonic_9']['x']} ${calibration['base_link2ultrasonic_9']['y']} ${calibration['base_link2ultrasonic_9']['z']}" rpy="${calibration['base_link2ultrasonic_9']['roll']} ${calibration['base_link2ultrasonic_9']['pitch']} ${calibration['base_link2ultrasonic_9']['yaw']}" />
+  </joint>
+  <joint name="baselink_ultrasonic_10" type="fixed">
+    <parent link="base_link" />
+    <child link="ultrasonic_10" />
+    <origin xyz="${calibration['base_link2ultrasonic_10']['x']} ${calibration['base_link2ultrasonic_10']['y']} ${calibration['base_link2ultrasonic_10']['z']}" rpy="${calibration['base_link2ultrasonic_10']['roll']} ${calibration['base_link2ultrasonic_10']['pitch']} ${calibration['base_link2ultrasonic_10']['yaw']}" />
+  </joint>
+  <joint name="baselink_ultrasonic_11" type="fixed">
+    <parent link="base_link" />
+    <child link="ultrasonic_11" />
+    <origin xyz="${calibration['base_link2ultrasonic_11']['x']} ${calibration['base_link2ultrasonic_11']['y']} ${calibration['base_link2ultrasonic_11']['z']}" rpy="${calibration['base_link2ultrasonic_11']['roll']} ${calibration['base_link2ultrasonic_11']['pitch']} ${calibration['base_link2ultrasonic_11']['yaw']}" />
+  </joint>
+
+  <joint name="os_lidar_top_camera" type="fixed">
+    <parent link="os_lidar_top" />
+    <child link="camera" />
+    <origin xyz="${calibration['os_lidar_top2camera']['x']} ${calibration['os_lidar_top2camera']['y']} ${calibration['os_lidar_top2camera']['z']}" rpy="${calibration['os_lidar_top2camera']['roll']} ${calibration['os_lidar_top2camera']['pitch']} ${calibration['os_lidar_top2camera']['yaw']}" />
+  </joint>
+</robot>

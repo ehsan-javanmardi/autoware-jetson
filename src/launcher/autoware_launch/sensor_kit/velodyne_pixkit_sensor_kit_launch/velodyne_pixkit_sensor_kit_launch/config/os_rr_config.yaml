@@ -1,0 +1,18 @@
+sensing/lidar/rear_right/ouster/os_sensor:
+  ros__parameters:
+    sensor_hostname: '192.168.1.123'
+    udp_dest: ''
+    mtp_dest: ''
+    mtp_main: false
+    lidar_mode: ''
+    timestamp_mode: 'TIME_FROM_ROS_TIME'
+    udp_profile_lidar: ''
+    metadata: ''
+    lidar_port: 0
+    imu_port: 0
+sensing/lidar/rear_right/ouster/os_cloud:
+  ros__parameters:
+    sensor_frame: 'os_sensor_rr'
+    lidar_frame: 'os_lidar_rr'
+    imu_frame: 'os_imu_rr'
+    timestamp_mode: 'TIME_FROM_ROS_TIME'

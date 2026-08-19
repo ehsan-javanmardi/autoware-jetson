@@ -1,0 +1,21 @@
+<launch>
+    <!--Change input_type and input_port according to the type of input source:
+               tcp - data over TCP
+               serial - data over a serial port
+        And according to the port used for reading, i.e.
+               21000 - TCP port
+               /dev/ttyUSB0 - serial port -->
+
+    <node name="fixposition_driver_ros2" pkg="fixposition_driver_ros2" exec="fixposition_driver_ros2_exec" output="screen" respawn="true" respawn_delay="5">
+        <!-- fp_output parameters -->
+        <param name="fp_output.formats" value="['ODOMETRY', 'LLH', 'RAWIMU', 'CORRIMU', 'TF']"/>
+        <param name="fp_output.type" value="tcp"/>
+        <!-- <param name="fp_output.port" value="21000" /> -->
+        <param name="fp_output.ip" value="192.168.1.110"/> <!-- Change to VRTK2's IP address in the network -->
+        <param name="fp_output.rate" value="100"/>
+        <param name="fp_output.reconnect_delay" value="5.0"/>
+
+        <!-- customer_input parameters -->
+        <param name="customer_input.speed_topic" value="/pix_hooke/v2a_drivestafb"/>
+    </node>
+</launch>

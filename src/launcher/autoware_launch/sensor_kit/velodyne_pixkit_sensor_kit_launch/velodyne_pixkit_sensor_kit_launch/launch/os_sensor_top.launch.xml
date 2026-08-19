@@ -1,0 +1,136 @@
+<launch>
+
+  <arg name="ouster_ns_top" default="/sensing/lidar/top/ouster"
+    description="Override the default namespace of all ouster nodes"/>
+  <arg name="sensor_hostname_top" default="192.168.1.126"
+    description="hostname or IP in dotted decimal form of the sensor"/>
+  <arg name="udp_dest" default="192.168.1.102"
+    description="hostname or IP where the sensor will send data packets"/>
+  <arg name="lidar_port" default="38672"
+    description="port to which the sensor should send lidar data"/>
+  <arg name="imu_port" default="48215"
+    description="port to which the sensor should send imu data"/>
+  <arg name="udp_profile_lidar" default="RNG19_RFL8_SIG16_NIR16"
+    description="lidar packet profile; possible values: {
+    LEGACY,
+    RNG19_RFL8_SIG16_NIR16_DUAL,
+    RNG19_RFL8_SIG16_NIR16,
+    RNG15_RFL8_NIR8
+    }"/>
+  <arg name="lidar_mode" default="1024x10"
+    description="resolution and rate; possible values: {
+    512x10,
+    512x20,
+    1024x10,
+    1024x20,
+    2048x10,
+    4096x5
+    }"/>
+  <arg name="timestamp_mode" default="TIME_FROM_ROS_TIME"
+    description="method used to timestamp measurements; possible values: {
+    TIME_FROM_INTERNAL_OSC,
+    TIME_FROM_SYNC_PULSE_IN,
+    TIME_FROM_PTP_1588,
+    TIME_FROM_ROS_TIME
+    }"/>
+  <arg name="metadata" default=""
+    description="path to write metadata file when receiving sensor data"/>
+  <arg name="viz" default="false"
+    description="whether to run a rviz"/>
+  <arg name="rviz_config" default="$(find-pkg-share ouster_ros)/config/viz.rviz"
+    description="optional rviz config file"/>
+
+  <arg name="sensor_frame" default="os_sensor"
+    description="sets name of choice for the sensor_frame tf frame, value can not be empty"/>
+  <arg name="lidar_frame" default="os_lidar"
+    description="sets name of choice for the os_lidar tf frame, value can not be empty"/>
+  <arg name="imu_frame" default="os_imu"
+      description="sets name of choice for the os_imu tf frame, value can not be empty"/>
+  <arg name="point_cloud_frame" default=""
+    description="which frame to be used when publishing PointCloud2 or LaserScan messages.
+    Choose between the value of sensor_frame or lidar_frame, leaving this value empty
+    would set lidar_frame to be the frame used when publishing these messages."/>
+
+  <arg name="use_system_default_qos" default="false"
+    description="Use the default system QoS settings"/>
+
+  <!-- Autoware compatible output. 'xyzircaedt' publishes
+    autoware::point_types::PointXYZIRCAEDT directly; with any other point type the
+    concatenate node silently drops intensity, channel and the per point timestamps
+    because the field layout does not match the struct it checks against. -->
+  <arg name="point_type" default="xyzircaedt"
+    description="point representation; use xyzircaedt for Autoware"/>
+  <arg name="intensity_source" default="reflectivity"
+    description="sensor channel reported as Autoware's uint8 intensity:
+    { reflectivity, signal, near_ir }"/>
+  <arg name="intensity_scale" default="1.0"
+    description="multiplier applied before saturating intensity into 0-255"/>
+
+  <!-- An organized cloud carries one point per beam/column including the ones with
+    no return, emitted as NaN. The concatenate node copies points verbatim, so those
+    NaNs would reach ground segmentation and scan matching. -->
+  <arg name="organized" default="false"
+    description="publish an organized (NaN padded) point cloud"/>
+
+  <!-- The sensor kit URDF already publishes base_link -> os_lidar_top. Letting the
+    driver broadcast its own os_sensor_top -> os_lidar_top gives that frame two
+    parents on /tf_static, and the last latched message wins. -->
+  <arg name="pub_static_tf" default="false"
+    description="let the driver broadcast the sensor/lidar/imu transforms"/>
+
+  <arg name="min_range" default="0.5"
+    description="drop returns closer than this, in meters"/>
+  <arg name="max_range" default="1000.0"
+    description="drop returns farther than this, in meters"/>
+  
+  <arg name="proc_mask" default="PCL" description="
+    use any combination of the 4 flags to enable or disable specific processors"/>
+
+  <arg name="scan_ring" default="0" description="
+    use this parameter in conjunction with the SCAN flag
+    and choose a value the range [0, sensor_beams_count)"/>
+
+  <group>
+    <push-ros-namespace namespace="$(var ouster_ns_top)"/>
+    <node pkg="ouster_ros" exec="os_driver" name="os_driver" output="screen">
+      <param name="sensor_hostname" value="$(var sensor_hostname_top)"/>
+      <param name="udp_dest" value="$(var udp_dest)"/>
+      <param name="mtp_dest" value=""/>
+      <param name="mtp_main" value="false"/>
+      <param name="lidar_port" value="$(var lidar_port)"/>
+      <param name="imu_port" value="$(var imu_port)"/>
+      <param name="udp_profile_lidar" value="$(var udp_profile_lidar)"/>
+      <param name="lidar_mode" value="$(var lidar_mode)"/>
+      <param name="metadata" value="$(var metadata)"/>
+      <param name="sensor_frame" value="os_sensor_top"/>
+      <param name="lidar_frame" value="os_lidar_top"/>
+      <param name="imu_frame" value="os_imu_top"/>
+      <param name="point_cloud_frame" value="$(var point_cloud_frame)"/>
+      <param name="timestamp_mode" value="$(var timestamp_mode)"/>
+      <param name="use_system_default_qos" value="$(var use_system_default_qos)"/>
+      <param name="proc_mask" value="$(var proc_mask)"/>
+      <param name="scan_ring" value="$(var scan_ring)"/>
+      <param name="point_type" value="$(var point_type)"/>
+      <param name="intensity_source" value="$(var intensity_source)"/>
+      <param name="intensity_scale" value="$(var intensity_scale)"/>
+      <param name="organized" value="$(var organized)"/>
+      <param name="pub_static_tf" value="$(var pub_static_tf)"/>
+      <param name="min_range" value="$(var min_range)"/>
+      <param name="max_range" value="$(var max_range)"/>
+    </node>
+  </group>
+
+  <!-- Bring the lifecycle node up (wait for registration, then configure -> activate).
+    Upstream used two `ros2 lifecycle set` calls behind fixed `sleep 3` / `sleep 5`
+    (self-labelled "HACK"); those lose the race on a busy machine and fail with
+    "Node not found", leaving the driver unconfigured with no publishers. -->
+  <executable
+    cmd="$(find-pkg-share velodyne_pixkit_sensor_kit_launch)/launch/activate_lifecycle_node.sh $(var ouster_ns_top)/os_driver 180"
+    output="screen"/>
+
+<include if="$(var viz)" file="$(find-pkg-share ouster_ros)/launch/rviz.launch.xml">
+    <arg name="ouster_ns_top" value="$(var ouster_ns_top)"/>
+    <arg name="rviz_config" value="$(var rviz_config)"/>
+  </include>
+
+</launch>
