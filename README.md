@@ -69,7 +69,7 @@ standard Autoware vehicle/sensor-kit layout.
 Built from source in `src/sensor_component/external/`:
 
 - **LiDAR** — `velodyne_vls` (`velodyne_driver`, `velodyne_pointcloud`, `velodyne_msgs`),
-  `ouster-ros` (`ouster_ros`, `ouster_sensor_msgs`) — the
+  `autoware_ouster_ros` (`ouster_ros`, `ouster_sensor_msgs`) — the
   [ehsan-javanmardi/autoware_ouster_ros](https://github.com/ehsan-javanmardi/autoware_ouster_ros)
   fork, which publishes `autoware::point_types::PointXYZIRCAEDT` natively (`point_type: xyzircaedt`)
   instead of a layout Autoware silently reduces to x/y/z,
