@@ -4,7 +4,7 @@ ci:
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
       - id: check-json
       - id: check-merge-conflict
@@ -19,7 +19,7 @@ repos:
         args: [--markdown-linebreak-ext=md]
 
   - repo: https://github.com/igorshubovych/markdownlint-cli
-    rev: v0.44.0
+    rev: v0.48.0
     hooks:
       - id: markdownlint
         args: [-c, .markdownlint.yaml, --fix]
@@ -31,40 +31,40 @@ repos:
         args: [--no-error-on-unmatched-pattern]
 
   - repo: https://github.com/adrienverge/yamllint
-    rev: v1.37.1
+    rev: v1.38.0
     hooks:
       - id: yamllint
 
   - repo: https://github.com/tier4/pre-commit-hooks-ros
-    rev: v0.10.0
+    rev: v0.10.2
     hooks:
       - id: prettier-package-xml
       - id: sort-package-xml
 
   - repo: https://github.com/shellcheck-py/shellcheck-py
-    rev: v0.10.0.1
+    rev: v0.11.0.1
     hooks:
       - id: shellcheck
 
   - repo: https://github.com/scop/pre-commit-shfmt
-    rev: v3.11.0-1
+    rev: v3.12.0-2
     hooks:
       - id: shfmt
         args: [-w, -s, -i=4]
 
   - repo: https://github.com/pycqa/isort
-    rev: 6.0.1
+    rev: 8.0.1
     hooks:
       - id: isort
 
-  - repo: https://github.com/psf/black
-    rev: 25.1.0
+  - repo: https://github.com/psf/black-pre-commit-mirror
+    rev: 26.3.0
     hooks:
       - id: black
         args: [--line-length=100]
 
   - repo: https://github.com/PyCQA/flake8
-    rev: 7.2.0
+    rev: 7.3.0
     hooks:
       - id: flake8
         additional_dependencies:
@@ -80,9 +80,10 @@ repos:
           ]
 
   - repo: https://github.com/pre-commit/mirrors-clang-format
-    rev: v20.1.3
+    rev: v22.1.0
     hooks:
       - id: clang-format
+        types_or: [c++, c, cuda, proto, textproto]
 
   - repo: https://github.com/cpplint/cpplint
     rev: 2.0.2
@@ -92,5 +93,11 @@ repos:
         # This does not play well with our naming conventions
         args: [--quiet, '--filter=-runtime/arrays,-build/c++17,-readability/casting']
         exclude: .cu
+
+  - repo: https://github.com/autowarefoundation/autoware_system_designer
+    rev: v0.3.0
+    hooks:
+      - id: lint-system-design-format
+        args: [--format=github-actions]
 
 exclude: .svg
