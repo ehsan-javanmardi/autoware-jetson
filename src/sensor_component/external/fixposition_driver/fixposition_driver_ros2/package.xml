@@ -21,6 +21,13 @@
     <depend>geometry_msgs</depend>
     <depend>fixposition_gnss_tf</depend>
     <depend>fixposition_driver_lib</depend>
+    <!-- Required by CMakeLists.txt but not declared upstream. colcon only puts the
+         prefixes of declared dependencies on CMAKE_PREFIX_PATH, so without these the
+         build only works when a binary copy happens to sit in /opt/ros/humble. -->
+    <depend>autoware_sensing_msgs</depend>
+    <depend>tf2</depend>
+    <depend>tf2_eigen</depend>
+    <depend>tf2_ros</depend>
 
   <export>
     <build_type>ament_cmake</build_type>
