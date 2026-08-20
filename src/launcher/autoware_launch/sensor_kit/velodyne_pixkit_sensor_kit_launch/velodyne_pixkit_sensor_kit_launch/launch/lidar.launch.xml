@@ -5,7 +5,7 @@
        so it has to be this machine's address ON THE SENSOR LAN (enp3s0), not the address it
        reaches the internet by. Pointing it anywhere else gives a driver that connects and
        configures the sensor normally and then never receives a packet. -->
-  <arg name="host_ip" default="192.168.1.20"/>
+  <arg name="host_ip" default="192.168.1.100"/>
 
   <!-- Which set of lidars is fitted. Each profile selects the drivers to start and a matching
        concatenate configuration from config/lidar_profiles/, whose input_topics and timestamp
@@ -14,7 +14,7 @@
        description="fitted lidar set: os1_128 | os2_32 | velodyne"/>
 
   <arg name="os1_128_ip" default="192.168.1.126" description="Ouster OS-1-128 address"/>
-  <arg name="os2_32_ip" default="192.168.1.100" description="Ouster OS-2-32 address"/>
+  <arg name="os2_32_ip" default="192.168.1.120" description="Ouster OS-2-32 address"/>
 
   <let name="use_ouster"
        value="$(eval &quot;'true' if '$(var lidar_profile)'.startswith('os') else 'false'&quot;)"/>

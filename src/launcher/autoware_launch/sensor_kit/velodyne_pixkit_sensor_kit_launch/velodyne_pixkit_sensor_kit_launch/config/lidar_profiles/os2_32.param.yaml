@@ -1,4 +1,4 @@
-# Lidar profile: a single Ouster OS-2-32 in the top mount (192.168.1.100).
+# Lidar profile: a single Ouster OS-2-32 in the top mount (192.168.1.120).
 #
 # input_topics, lidar_timestamp_offsets and lidar_timestamp_noise_window must all have the
 # same number of entries, one per cloud that actually arrives.

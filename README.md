@@ -238,7 +238,7 @@ See [Run on Pixkit](#run-on-pixkit) below. The Kashiwanoha map is committed in
 ## Sensors
 
 Two Ouster lidars share the top mount and run one at a time — an **OS-1-128** at `192.168.1.126`
-and an **OS-2-32** at `192.168.1.100` — alongside a CHC CGI-410 GNSS/INS at `192.168.1.110` and a
+and an **OS-2-32** at `192.168.1.120` — alongside a CHC CGI-410 GNSS/INS at `192.168.1.110` and a
 USB camera for traffic lights. The four VLP-16s of the stock Pixkit configuration are not fitted.
 
 Which lidars are launched is chosen with one argument rather than by editing files:

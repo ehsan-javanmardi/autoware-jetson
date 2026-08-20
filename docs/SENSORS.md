@@ -6,7 +6,7 @@ what to change when the hardware moves to another vehicle.
 | Sensor | Status | Address | Page |
 | ------ | ------ | ------- | ---- |
 | Ouster OS-1-128 lidar | **in use** | `192.168.1.126` | [OUSTER_OS1_128.md](sensors/OUSTER_OS1_128.md) |
-| Ouster OS-2-32 lidar | **in use** | `192.168.1.100` | [OUSTER_OS2_32.md](sensors/OUSTER_OS2_32.md) |
+| Ouster OS-2-32 lidar | **in use** | `192.168.1.120` | [OUSTER_OS2_32.md](sensors/OUSTER_OS2_32.md) |
 | CHC CGI-410 GNSS / INS | **in use** | `192.168.1.110` | [CHC_CGI410.md](sensors/CHC_CGI410.md) |
 | USB camera (traffic light) | **in use** | `/dev/video2` | [CAMERA.md](sensors/CAMERA.md) |
 | Velodyne VLP-16 ×4 | not fitted | `192.168.1.201`–`.204` | [VELODYNE_VLP16.md](sensors/VELODYNE_VLP16.md) |
@@ -17,24 +17,25 @@ before anything moves: see [VEHICLE_CAN_AND_RUNTIME.md](VEHICLE_CAN_AND_RUNTIME.
 
 ## Sensor LAN
 
-Everything on ethernet shares one segment with the host at `192.168.1.20/24`, static and with
+Everything on ethernet shares one segment with the host at `192.168.1.100/24`, static and with
 **no gateway**, so the default route stays on wifi or USB ethernet.
 
 | Device | Address | Ports |
 | ------ | ------- | ----- |
-| This PC (`enp3s0`) | `192.168.1.20/24` | — |
+| This PC (`enp3s0`) | `192.168.1.100/24` | — |
 | Ouster OS-1-128 | `192.168.1.126` | web `80`, data `7501`, lidar UDP `38672`, imu UDP `48215` |
-| Ouster OS-2-32 | `192.168.1.100` | web `80`, data `7501`, lidar UDP `38672`, imu UDP `48215` |
+| Ouster OS-2-32 | `192.168.1.120` | web `80`, data `7501`, lidar UDP `38672`, imu UDP `48215` |
 | CHC CGI-410 | `192.168.1.110` | web `80`, NMEA TCP `9904` |
 | Velodyne VLP-16 ×4 (absent) | `192.168.1.201`–`.204` | data UDP `2368`–`2371` |
 
-Do not assign `.20`, `.100`, `.110`, `.125`, `.126`, `.102` or `.200`. The first four are in use;
-the rest appear in configuration files that are still around.
+The scheme is **`.100` the host**, `.110` GNSS, `.12x` lidars, `.20x` the legacy Velodynes. Do not
+assign `.100`, `.110`, `.120`, `.125`, `.126`, `.102` or `.200`: the first four are in use, the
+rest appear in configuration files that are still around.
 
-The host used to sit at `.100`, which is now the OS-2-32's address. Anything that still says
-`192.168.1.100` and means "this machine" is stale — including the `host_ip` default, which was
-corrected to `.20`. A `host_ip` pointing at `.100` now tells the lidar to send its packets to the
-other lidar.
+`.100` is deliberately the host rather than a sensor. On a /24 the low round numbers read as
+infrastructure, and a sensor sitting on one invites the mistake of pointing `host_ip` at it, which
+tells the lidar to send its point cloud to another device and produces a driver that connects,
+configures the sensor and then waits forever without an error.
 
 Because the segment has no gateway, a device that needs the internet — the GNSS receiver reaching
 the NTRIP caster — is routed by `pixkit-sensor-nat.service`, which masquerades `192.168.1.0/24`
@@ -56,7 +57,7 @@ ros2 launch autoware_launch autoware.launch.xml \
 | Profile | Fitted lidars | Concat config |
 | ------- | ------------- | ------------- |
 | `os1_128` (default) | Ouster OS-1-128 at `.126` | `config/lidar_profiles/os1_128.param.yaml` |
-| `os2_32` | Ouster OS-2-32 at `.100` | `config/lidar_profiles/os2_32.param.yaml` |
+| `os2_32` | Ouster OS-2-32 at `.120` | `config/lidar_profiles/os2_32.param.yaml` |
 | `velodyne` | four VLP-16s at `.201`–`.204` | `config/lidar_profiles/velodyne.param.yaml` (untested) |
 
 A profile decides two things, and they have to agree with each other:

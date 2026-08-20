@@ -9,8 +9,8 @@ and the field of view. Select it with `lidar_profile:=os2_32`.
 | | |
 | --- | --- |
 | Model | Ouster OS-2, 32 beams |
-| Address | `192.168.1.100` |
-| Host address | `192.168.1.20/24` on the sensor LAN, static, **no gateway** |
+| Address | `192.168.1.120` |
+| Host address | `192.168.1.100/24` on the sensor LAN, static, **no gateway** |
 | UDP ports | lidar `38672`, imu `48215` (shared with the OS-1 profile) |
 | Point type | `xyzircaedt` — `autoware::point_types::PointXYZIRCAEDT` |
 | Topic | `/sensing/lidar/top/ouster/points` |
@@ -49,12 +49,11 @@ A different address for one run:
    exactly the same place with the same orientation, that entry has to be re-measured before this
    profile localizes correctly. Wrong extrinsics do not raise an error, they produce scan matching
    that drifts or never converges.
-2. **The address does not collide.** `192.168.1.100` used to be the host's own address on the
-   sensor LAN. The host now sits at `192.168.1.20`, which is what makes `.100` available. If a
-   machine is ever reconfigured back to `.100`, this lidar and that host will fight over the
-   address and the symptom will look like a broken sensor.
+2. **The address.** `.120` keeps the lidars together in `.12x` and leaves `.100` to the host,
+   which is where the rest of the setup expects it. Set it through the sensor's web UI, or pass
+   `os2_32_ip:=<address>` for a one-off run.
 3. **`host_ip`.** The sensor sends its UDP stream to whatever `host_ip` names. On a machine whose
-   sensor LAN address is not `192.168.1.20`, pass `host_ip:=<that address>` or the driver will
+   sensor LAN address is not `192.168.1.100`, pass `host_ip:=<that address>` or the driver will
    connect, configure the sensor and receive nothing.
 
 ## Differences from the OS-1-128 that matter downstream
@@ -75,7 +74,7 @@ were tuned for a 128 beam sensor, and a four times sparser cloud may need
 ## Verifying
 
 ```bash
-ping 192.168.1.100
+ping 192.168.1.120
 ros2 topic hz /sensing/lidar/top/ouster/points                    # ~10 Hz
 ros2 topic echo --field fields /sensing/lidar/top/ouster/points --once   # 10 fields
 ros2 topic echo --field height /sensing/lidar/top/ouster/points --once   # 1 (unorganized)

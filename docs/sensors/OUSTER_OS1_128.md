@@ -10,7 +10,7 @@ that publishes Autoware's point type natively.
 | --- | --- |
 | Model | Ouster OS-1, 128 beams |
 | Address | `192.168.1.126` (mDNS `os-122345000355.local`, web UI `:80`, data `:7501`) |
-| Host address | `192.168.1.20/24` on the sensor LAN, static, **no gateway** |
+| Host address | `192.168.1.100/24` on the sensor LAN, static, **no gateway** |
 | UDP ports | lidar `38672`, imu `48215` |
 | Mode | `1024x10`, profile `RNG19_RFL8_SIG16_NIR16` |
 | Point type | `xyzircaedt` — `autoware::point_types::PointXYZIRCAEDT` |
@@ -55,7 +55,7 @@ the concatenate node copies them straight through; and the driver's own static t
 
    ```bash
    nmcli con add type ethernet ifname enp3s0 con-name sensor-lan \
-       ipv4.method manual ipv4.addresses 192.168.1.20/24 ipv4.never-default yes
+       ipv4.method manual ipv4.addresses 192.168.1.100/24 ipv4.never-default yes
    ```
 
    If the interface gets no IPv4 at all, see the NetworkManager note in
@@ -80,7 +80,7 @@ the concatenate node copies them straight through; and the driver's own static t
        vehicle_model:=pixkit sensor_model:=velodyne_pixkit_sensor_kit \
        map_path:=$PWD/autoware_map
    # or override for a one-off:
-   #   lidar_profile:=os1_128 os1_128_ip:=192.168.1.130 host_ip:=192.168.1.20
+   #   lidar_profile:=os1_128 os1_128_ip:=192.168.1.130 host_ip:=192.168.1.100
    ```
 
    To change it permanently, edit the `os1_128_ip` and `host_ip` defaults in `lidar.launch.xml`.

@@ -1,10 +1,5 @@
 # RTK (SoftBank ichimill) on Pixkit — receiver built-in NTRIP client
 
-> [!IMPORTANT]
-> The host's sensor LAN address changed from `192.168.1.100` to **`192.168.1.20`**; `.100` is now
-> the Ouster OS-2-32. Everything below has been updated, but a receiver configured before that
-> change still has `192.168.1.100` as its gateway and will silently fail to reach the caster until
-> its gateway is set to `192.168.1.20`.
 
 Two ways to feed RTCM corrections to the CHC CGI-410. **Path B is set up on this
 machine** and is preferred for road driving.
@@ -19,7 +14,7 @@ machine** and is preferred for road driving.
 
 ## Host state (already done)
 
-- `enp3s0` static **192.168.1.20/24**, no gateway, `never-default` (wifi/USB stays default route)
+- `enp3s0` static **192.168.1.100/24**, no gateway, `never-default` (wifi/USB stays default route)
 - NAT for the sensor subnet: `pixkit-sensor-nat.service` (enabled, active) — masquerades
   `192.168.1.0/24` out whichever interface has the default route, plus `DOCKER-USER`
   accept rules (Docker sets `FORWARD` policy to DROP, so these are required)
@@ -38,7 +33,7 @@ In the receiver's network / Ethernet settings:
 | --- | --- |
 | IP address | `192.168.1.110` (unchanged) |
 | Netmask | `255.255.255.0` |
-| **Gateway** | **`192.168.1.20`** ← this laptop |
+| **Gateway** | **`192.168.1.100`** ← this laptop |
 | **DNS** | **`8.8.8.8`** (or `1.1.1.1`) |
 
 ### 2. Configure the NTRIP client
@@ -124,7 +119,7 @@ U="urlStringId=admin$(date +%s)000"
 
 # 1. gateway + DNS (IP/mask unchanged, so the receiver does not move)
 curl -sG "http://$R/eth_ip_set.cmd" --data-urlencode "$U" \
-  -d ip=192.168.1.110 -d gateway=192.168.1.20 -d mask=255.255.255.0 \
+  -d ip=192.168.1.110 -d gateway=192.168.1.100 -d mask=255.255.255.0 \
   -d dns=8.8.8.8 -d udhcpc=0
 
 # 2. NTRIP (CORS caster) mode
@@ -162,7 +157,7 @@ caster, so a mount-point list proves both the gateway and the laptop NAT are wor
 ### Equivalent clicks in Chrome
 
 - **Network Settings** page (`WebForm/NetworkSet/NetworkSet.html`) - static IP, set
-  Gateway `192.168.1.20`, DNS `8.8.8.8`, leave IP/mask alone.
+  Gateway `192.168.1.100`, DNS `8.8.8.8`, leave IP/mask alone.
 - **IO Settings** page (`WebForm/IOSet/IOSet.html`) - the `NetClientRover` row, edit it
   (opens `EditWindows/CorsSet.html`): mode CORS/NTRIP caster, server + port, account,
   then refresh the mount-point list and pick `RTCM32M7S`, save, connect.
@@ -193,7 +188,7 @@ str2str -in "ntrip://67vsdpoz:<pass>@ntrip.ales-corp.co.jp:2101/RTCM32M7S" \
 ```
 
 Expect a steady ~15 kbps. Then in the receiver: **IO Configuration → RTK Client →
-Connect**, Protocol **TCP**, Server **192.168.1.20**, Port **2102**.
+Connect**, Protocol **TCP**, Server **192.168.1.100**, Port **2102**.
 
 ## Notes
 
