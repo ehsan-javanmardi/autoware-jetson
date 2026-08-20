@@ -329,6 +329,7 @@ Everything written for this vehicle lives in [`docs/`](docs/):
 
 | Document | What it covers |
 | -------- | -------------- |
+| [`docs/PARALLEL_VERSIONS.md`](docs/PARALLEL_VERSIONS.md) | Keeping the version that runs on the vehicle buildable while developing the next one, with a second working copy rather than by switching branches. |
 | [`docs/LAUNCH_CHAIN.md`](docs/LAUNCH_CHAIN.md) | How a launch gets from `autoware.launch.xml` to a point cloud: which file includes which, how `sensor_model` selects this vehicle's packages, where the namespaces come from, and how the shared pointcloud container is filled. |
 | [`docs/SENSORS.md`](docs/SENSORS.md) | Index of the sensors on this vehicle, the sensor LAN address map, and a page per sensor under [`docs/sensors/`](docs/sensors) covering its addressing, configuration files, topics and frames. |
 | [`docs/MAPS.md`](docs/MAPS.md) | The maps in `autoware_map/`, what each file is for, and what to check before adding another one. |
