@@ -78,6 +78,9 @@ def generate_launch_description():
     add_launch_arg("use_multithread", "False")
     add_launch_arg("use_intra_process", "False")
     add_launch_arg("pointcloud_container_name", "pointcloud_container")
+    # Used by launch_setup's IfCondition. Undeclared, an include that does not pass it dies
+    # with "launch configuration 'use_concat_filter' does not exist" and loads nothing.
+    add_launch_arg("use_concat_filter", "true")
     add_launch_arg(
         "concatenate_and_time_sync_node_param_path",
         os.path.join(

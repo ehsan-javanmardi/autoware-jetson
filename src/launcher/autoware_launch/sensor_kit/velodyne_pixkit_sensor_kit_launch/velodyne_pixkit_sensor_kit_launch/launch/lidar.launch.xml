@@ -20,6 +20,10 @@
        value="$(eval &quot;'true' if '$(var lidar_profile)'.startswith('os') else 'false'&quot;)"/>
   <let name="use_velodyne"
        value="$(eval &quot;'true' if 'velodyne' in '$(var lidar_profile)' else 'false'&quot;)"/>
+  <!-- The concatenate node throws "Only one topic given. Need at least two topics to continue."
+       and refuses to load, so single lidar profiles get a passthrough instead. -->
+  <let name="concat_enabled"
+       value="$(eval &quot;'false' if '$(var lidar_profile)' in ('os1_128', 'os2_32') else 'true'&quot;)"/>
   <let name="ouster_ip"
        value="$(eval &quot;'$(var os2_32_ip)' if '$(var lidar_profile)' == 'os2_32' else '$(var os1_128_ip)'&quot;)"/>
 
@@ -110,11 +114,42 @@
       </group>
     </group>
 
+    <!-- Single lidar: nothing to concatenate. Autoware still expects the cloud on
+         /sensing/lidar/concatenated/pointcloud and in base_link, which is what the concatenate
+         node would have produced, so pass it through a crop box whose only job is the
+         transform. A plain topic relay would leave the cloud in the sensor frame, and ground
+         segmentation reads heights as if they were relative to the vehicle. -->
+    <group unless="$(var concat_enabled)">
+      <load_composable_node target="/$(var pointcloud_container_name)">
+        <composable_node pkg="autoware_pointcloud_preprocessor"
+                         plugin="autoware::pointcloud_preprocessor::CropBoxFilterComponent"
+                         name="single_lidar_passthrough">
+          <remap from="input" to="/sensing/lidar/top/ouster/points"/>
+          <remap from="output" to="/sensing/lidar/concatenated/pointcloud"/>
+          <!-- Both frames are required: the component refuses to construct with an empty
+               input_frame, and without output_frame the cloud stays in the sensor frame. -->
+          <param name="input_frame" value="os_lidar_top"/>
+          <param name="output_frame" value="base_link"/>
+          <param name="min_x" value="-1000.0"/>
+          <param name="max_x" value="1000.0"/>
+          <param name="min_y" value="-1000.0"/>
+          <param name="max_y" value="1000.0"/>
+          <param name="min_z" value="-1000.0"/>
+          <param name="max_z" value="1000.0"/>
+          <param name="negative" value="false"/>
+          <param name="processing_time_threshold_sec" value="0.01"/>
+        </composable_node>
+      </load_composable_node>
+    </group>
+
     <include file="$(find-pkg-share velodyne_pixkit_sensor_kit_launch)/launch/pointcloud_preprocessor.launch.py">
       <arg name="base_frame" value="base_link"/>
       <arg name="use_intra_process" value="true"/>
       <arg name="use_multithread" value="true"/>
       <arg name="pointcloud_container_name" value="$(var pointcloud_container_name)"/>
+      <!-- The profile decides this, not the caller: it has to match the number of input
+           topics in the profile's parameter file. -->
+      <arg name="use_concat_filter" value="$(var concat_enabled)"/>
       <!-- One concatenate configuration per lidar profile: the node needs one entry in
            input_topics, lidar_timestamp_offsets and lidar_timestamp_noise_window for every
            cloud that will actually arrive, and mismatched array lengths are a startup error. -->

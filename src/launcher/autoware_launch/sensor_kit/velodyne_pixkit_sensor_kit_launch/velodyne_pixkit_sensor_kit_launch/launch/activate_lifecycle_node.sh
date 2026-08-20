@@ -13,7 +13,10 @@ set -u
 NODE="${1:?usage: $0 <node> [max_wait_seconds]}"
 MAX_WAIT="${2:-180}"
 
-state() { ros2 lifecycle get "$NODE" 2>/dev/null | cut -d' ' -f1; }
+# --no-daemon on every call: the ros2 CLI daemon caches the node graph and, once it dies
+# (seen as "RuntimeError:!rclpy.ok()"), every query returns empty instead of failing. This
+# loop would then wait out its whole timeout while the node sat there registered and healthy.
+state() { ros2 lifecycle get --no-daemon "$NODE" 2>/dev/null | cut -d' ' -f1; }
 
 echo "[lifecycle] waiting for $NODE (up to ${MAX_WAIT}s)"
 deadline=$((SECONDS + MAX_WAIT))
@@ -31,13 +34,13 @@ for attempt in 1 2 3 4 5; do
     [ "$st" = active ] && break
     if [ "$st" = unconfigured ]; then
         echo "[lifecycle] configure (attempt $attempt)"
-        ros2 lifecycle set "$NODE" configure || true
+        ros2 lifecycle set --no-daemon "$NODE" configure || true
         sleep 2
     fi
     st="$(state)"
     if [ "$st" = inactive ]; then
         echo "[lifecycle] activate (attempt $attempt)"
-        ros2 lifecycle set "$NODE" activate || true
+        ros2 lifecycle set --no-daemon "$NODE" activate || true
         sleep 2
     fi
     st="$(state)"
