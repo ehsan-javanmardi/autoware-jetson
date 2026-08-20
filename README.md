@@ -6,7 +6,7 @@ equipped with a Velodyne VLP LiDAR.
 This is an **upstream Autoware source tree with the Pixkit vehicle and sensor integration merged in**.
 Everything upstream Autoware does still applies; this file documents only what is specific to this
 workspace. The original upstream README is preserved as
-[`docs/README.upstream-autoware.md`](docs/README.upstream-autoware.md).
+[`docs/README_UPSTREAM_AUTOWARE.md`](docs/README_UPSTREAM_AUTOWARE.md).
 
 ---
 
@@ -224,8 +224,8 @@ line. Several dozen packages report `stderr output`; those are compiler warnings
 
 ### 6. Run
 
-See [Run on Pixkit](#run-on-pixkit) below. A map is not included in this repository and has to be
-supplied separately.
+See [Run on Pixkit](#run-on-pixkit) below. The Kashiwanoha map is committed in
+[`autoware_map/`](autoware_map), so there is nothing else to fetch.
 
 ### Troubleshooting
 
@@ -234,6 +234,14 @@ supplied separately.
 | `rosdep` aborts with `Multiple packages found with the same name "..."` | Two copies of the same package under `src/`. `catkin_pkg` refuses to scan such a tree. Find them with the `colcon list` command above and delete or `COLCON_IGNORE` the copy that does not belong. This is what happens when a Pixkit release built against an older Autoware is copied over a newer `src/`: the packages it ships may have been restructured upstream since, so the copy lands beside the current ones instead of replacing them. |
 | `no matching function for call to ...`, where the header in the error path is under `/opt/ros/humble/include` while the `.cpp` is under `src/` | A Debian package is shadowing its source counterpart. Go back to step 4. |
 | `Could not find a package configuration file provided by "X"`, and `X` is in `src/` and built | The package's `CMakeLists.txt` calls `find_package(X)` but its `package.xml` does not declare `X`. colcon only puts the prefixes of **declared** dependencies on `CMAKE_PREFIX_PATH`, so a package that builds only because a Debian copy of `X` happens to be installed will break the moment that copy is removed. Add `<depend>X</depend>` to the manifest. |
+
+## Maps
+
+A point cloud map and a lanelet2 map are committed in [`autoware_map/`](autoware_map): Kashiwanoha
+Campus, MGRS grid `54SVE`, 22 MB. This is what the launch script loads unless told otherwise.
+
+See [`docs/MAPS.md`](docs/MAPS.md) for what each file is, how to point Autoware at a different
+map, and what to check before committing a new one.
 
 ## Run on Pixkit
 
@@ -252,8 +260,8 @@ ros2 launch autoware_launch autoware.launch.xml \
     log_level:=debug
 ```
 
-A point cloud map and lanelet2 map are **not** included in this repository and must be supplied
-separately.
+The map directory defaults to [`autoware_map/`](autoware_map); pass another path as the first
+argument to use a different map. See [Maps](#maps).
 
 ---
 
@@ -286,7 +294,7 @@ Sensor/network addressing and the host-level settings that make it work are in
 This tree was assembled by cloning `autowarefoundation/autoware` at tag **1.9.0** (commit
 `1071878`), importing `repositories/autoware.repos`, and copying the `tlab-wide/Pixkit_Autoware`
 extensions over the result. The 180 upstream files the Pixkit copy overwrote are listed in
-[`docs/pixkit_merge_overwritten_files.txt`](docs/pixkit_merge_overwritten_files.txt); their stock 1.9.0
+[`docs/PIXKIT_MERGE_OVERWRITTEN_FILES.txt`](docs/PIXKIT_MERGE_OVERWRITTEN_FILES.txt); their stock 1.9.0
 contents can be recovered from the revisions recorded in
 [`repositories/imported-revisions.repos`](repositories/imported-revisions.repos).
 
@@ -296,7 +304,7 @@ the exact commit every package came from, so any of them can be re-cloned and di
 committed here.
 
 The Pixkit extension repository's own README is kept as
-[`docs/README.pixkit-extensions.md`](docs/README.pixkit-extensions.md).
+[`docs/README_PIXKIT_EXTENSIONS.md`](docs/README_PIXKIT_EXTENSIONS.md).
 
 ## Documentation
 
@@ -304,12 +312,13 @@ Everything written for this vehicle lives in [`docs/`](docs/):
 
 | Document | What it covers |
 | -------- | -------------- |
+| [`docs/MAPS.md`](docs/MAPS.md) | The maps in `autoware_map/`, what each file is for, and what to check before adding another one. |
 | [`docs/SETUP_STATE.md`](docs/SETUP_STATE.md) | Setup state and handover notes: what is configured, what is not, and where each subsystem stands. Read this first when resuming work. |
 | [`docs/VEHICLE_CAN_AND_RUNTIME.md`](docs/VEHICLE_CAN_AND_RUNTIME.md) | CAN bring-up and the runtime picture from a real launch: interfaces, topics, and what has to be running before autonomy engages. |
 | [`docs/RTK_ICHIMILL_SETUP.md`](docs/RTK_ICHIMILL_SETUP.md) | RTK corrections over SoftBank ichimill, both the `str2str` relay and the receiver's built-in NTRIP client. |
-| [`docs/pixkit_merge_overwritten_files.txt`](docs/pixkit_merge_overwritten_files.txt) | The 180 upstream files the Pixkit extension copy overwrote in this tree. |
-| [`docs/README.pixkit-extensions.md`](docs/README.pixkit-extensions.md) | The Pixkit extension repository's own README, kept as it was received. |
-| [`docs/README.upstream-autoware.md`](docs/README.upstream-autoware.md) | The upstream Autoware README, replaced at the root by this file. |
+| [`docs/PIXKIT_MERGE_OVERWRITTEN_FILES.txt`](docs/PIXKIT_MERGE_OVERWRITTEN_FILES.txt) | The 180 upstream files the Pixkit extension copy overwrote in this tree. |
+| [`docs/README_PIXKIT_EXTENSIONS.md`](docs/README_PIXKIT_EXTENSIONS.md) | The Pixkit extension repository's own README, kept as it was received. |
+| [`docs/README_UPSTREAM_AUTOWARE.md`](docs/README_UPSTREAM_AUTOWARE.md) | The upstream Autoware README, replaced at the root by this file. |
 
 The Ouster driver documents itself in
 [`src/sensor_component/external/autoware_ouster_ros/README.md`](src/sensor_component/external/autoware_ouster_ros/README.md).

@@ -1,0 +1,8 @@
+# Projection info for the Kashiwanoha map.
+# mgrs_grid is the 100 km square designator taken from the lanelet2 map's
+# mgrs_code tags (e.g. "54SVE036734" -> "54SVE").
+# Without this file Autoware falls back to deriving projection from
+# lanelet2_map.osm, which logs a DEPRECATED warning.
+projector_type: MGRS
+vertical_datum: WGS84
+mgrs_grid: 54SVE

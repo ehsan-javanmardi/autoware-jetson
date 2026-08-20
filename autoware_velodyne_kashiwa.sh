@@ -1,15 +1,22 @@
 #!/bin/bash
-# Launch Autoware on the Pixkit 2.0 with a Velodyne VLP LiDAR.
+# Launch Autoware on the Pixkit 3.0.
 #
 # Adapted from Pixkit_Autoware/autoware_velodyne_kashiwa.sh: the upstream copy
 # hardcoded /home/autoware/pixkit_autoware_0.45.1, which does not exist here.
 #
 # Usage:  ./autoware_velodyne_kashiwa.sh [map_dir]
-# Default map dir: ../autoware_map  (override with $1 or $AUTOWARE_MAP_PATH)
+# Default map dir: ./autoware_map  (override with $1 or $AUTOWARE_MAP_PATH).
+# See docs/MAPS.md for what a map directory has to contain.
 set -e
 
 AUTOWARE_WS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-MAP_PATH="${1:-${AUTOWARE_MAP_PATH:-$(cd "$AUTOWARE_WS/.." && pwd)/autoware_map}}"
+# The maps live inside the workspace. The previous layout kept them one level up,
+# so that location is still accepted as a fallback.
+DEFAULT_MAP_PATH="$AUTOWARE_WS/autoware_map"
+if [ ! -d "$DEFAULT_MAP_PATH" ] && [ -d "$AUTOWARE_WS/../autoware_map" ]; then
+    DEFAULT_MAP_PATH="$(cd "$AUTOWARE_WS/.." && pwd)/autoware_map"
+fi
+MAP_PATH="${1:-${AUTOWARE_MAP_PATH:-$DEFAULT_MAP_PATH}}"
 
 if [ ! -f "$AUTOWARE_WS/install/setup.bash" ]; then
     echo "error: $AUTOWARE_WS/install/setup.bash not found - build first:" >&2
