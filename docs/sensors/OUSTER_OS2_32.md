@@ -41,10 +41,12 @@ ros2 launch autoware_launch autoware.launch.xml \
     lidar_profile:=os2_32
 ```
 
-Or through the script, which passes extra arguments through:
+Or through the script, which forwards any `arg:=value` to the launch and defaults the map
+directory to `autoware_map/`:
 
 ```bash
-./autoware_velodyne_kashiwa.sh autoware_map lidar_profile:=os2_32
+./autoware_velodyne_kashiwa.sh lidar_profile:=os2_32
+./autoware_velodyne_kashiwa.sh /other/map lidar_profile:=os2_32   # different map
 ```
 
 A different address for one run:
@@ -157,6 +159,22 @@ segmentation parameters in
 [`ground_segmentation.param.yaml`](../../src/launcher/autoware_launch/autoware_launch/config/perception/obstacle_segmentation/ground_segmentation/ground_segmentation.param.yaml)
 were tuned for a 128 beam sensor, and a four times sparser cloud may need
 `grid_size_m` and `gnd_grid_buffer_size` revisited.
+
+## Verified against the unit in hand
+
+Bench run on 2026-08-20, sensor at `192.168.1.120`, host at `192.168.1.100`:
+
+```
+rate        10.001 Hz
+frame_id    os_lidar_top
+point_step  32          height 1 (unorganized)   is_dense true
+fields      x@0 y@4 z@8 intensity@12 return_type@13 channel@14
+            azimuth@16 elevation@20 distance@24 time_stamp@28
+```
+
+Ten fields at Autoware's byte offsets, which is what `point_type: xyzircaedt` exists to produce.
+The width was ~8k points rather than the 32,768 of a full `1024x10` frame because the sensor was
+indoors and most beams had no return; unorganized mode drops those rather than emitting NaN.
 
 ## Verifying
 

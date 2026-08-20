@@ -4,7 +4,7 @@
 # Adapted from Pixkit_Autoware/autoware_velodyne_kashiwa.sh: the upstream copy
 # hardcoded /home/autoware/pixkit_autoware_0.45.1, which does not exist here.
 #
-# Usage:  ./autoware_velodyne_kashiwa.sh [map_dir]
+# Usage:  ./autoware_velodyne_kashiwa.sh [map_dir] [launch_arg:=value ...]
 # Default map dir: ./autoware_map  (override with $1 or $AUTOWARE_MAP_PATH).
 # See docs/MAPS.md for what a map directory has to contain.
 set -e
@@ -16,7 +16,16 @@ DEFAULT_MAP_PATH="$AUTOWARE_WS/autoware_map"
 if [ ! -d "$DEFAULT_MAP_PATH" ] && [ -d "$AUTOWARE_WS/../autoware_map" ]; then
     DEFAULT_MAP_PATH="$(cd "$AUTOWARE_WS/.." && pwd)/autoware_map"
 fi
-MAP_PATH="${1:-${AUTOWARE_MAP_PATH:-$DEFAULT_MAP_PATH}}"
+# Anything containing ":=" is a launch argument and is forwarded to ros2 launch, so the map
+# directory can be omitted:  ./autoware_velodyne_kashiwa.sh lidar_profile:=os2_32
+if [[ "${1:-}" == *":="* ]]; then
+    MAP_ARG=""
+    EXTRA_ARGS=("$@")
+else
+    MAP_ARG="${1:-}"
+    EXTRA_ARGS=("${@:2}")
+fi
+MAP_PATH="${MAP_ARG:-${AUTOWARE_MAP_PATH:-$DEFAULT_MAP_PATH}}"
 
 if [ ! -f "$AUTOWARE_WS/install/setup.bash" ]; then
     echo "error: $AUTOWARE_WS/install/setup.bash not found - build first:" >&2
@@ -73,4 +82,5 @@ ros2 launch autoware_launch autoware.launch.xml \
     map_path:="$MAP_PATH" \
     pointcloud_map_file:="$PCD_FILE" \
     lanelet2_map_file:="$LANELET_FILE" \
-    log_level:=debug
+    log_level:=debug \
+    "${EXTRA_ARGS[@]}"
