@@ -76,6 +76,26 @@ curl -X PUT http://192.168.1.100/api/v1/system/network/ipv4/override \
 curl -X DELETE http://192.168.1.100/api/v1/system/network/ipv4/override
 ```
 
+**From a Windows workstation**, in PowerShell. The body is a JSON *string*, so the double quotes
+have to survive into the request — wrap it in single quotes:
+
+```powershell
+# what it currently thinks its network is
+Invoke-RestMethod -Uri "http://192.168.1.100/api/v1/system/network" | ConvertTo-Json -Depth 5
+
+# set the static override
+Invoke-RestMethod -Uri "http://192.168.1.100/api/v1/system/network/ipv4/override" `
+    -Method Put -ContentType "application/json" -Body '"192.168.1.120/24"'
+
+# confirm on the new address
+Test-NetConnection 192.168.1.120 -Port 80
+Invoke-RestMethod -Uri "http://192.168.1.120/api/v1/system/network" | ConvertTo-Json -Depth 5
+```
+
+Note that `curl` in PowerShell is an alias for `Invoke-WebRequest`, which does not take curl's
+flags: a pasted `curl -X PUT ...` fails with a confusing parameter error. Use `curl.exe` if you
+want the literal curl syntax, or the cmdlets above.
+
 Verify on the new address, not the old one:
 
 ```bash
