@@ -6,7 +6,7 @@ what to change when the hardware moves to another vehicle.
 | Sensor | Status | Address | Page |
 | ------ | ------ | ------- | ---- |
 | Ouster OS-1-128 lidar | **in use** | `192.168.1.126` | [OUSTER_OS1_128.md](sensors/OUSTER_OS1_128.md) |
-| Ouster OS-2-32 lidar | **in use** | `192.168.1.120` | [OUSTER_OS2_32.md](sensors/OUSTER_OS2_32.md) |
+| Ouster OS-2-32-U3 lidar | **in use** | `192.168.1.120` | [OUSTER_OS2_32.md](sensors/OUSTER_OS2_32.md) |
 | CHC CGI-410 GNSS / INS | **in use** | `192.168.1.110` | [CHC_CGI410.md](sensors/CHC_CGI410.md) |
 | USB camera (traffic light) | **in use** | `/dev/video2` | [CAMERA.md](sensors/CAMERA.md) |
 | Velodyne VLP-16 ×4 | not fitted | `192.168.1.201`–`.204` | [VELODYNE_VLP16.md](sensors/VELODYNE_VLP16.md) |
@@ -24,7 +24,7 @@ Everything on ethernet shares one segment with the host at `192.168.1.100/24`, s
 | ------ | ------- | ----- |
 | This PC (`enp3s0`) | `192.168.1.100/24` | — |
 | Ouster OS-1-128 | `192.168.1.126` | web `80`, data `7501`, lidar UDP `38672`, imu UDP `48215` |
-| Ouster OS-2-32 | `192.168.1.120` | web `80`, data `7501`, lidar UDP `38672`, imu UDP `48215` |
+| Ouster OS-2-32-U3 | `192.168.1.120` | web `80`, data `7501`, lidar UDP `38672`, imu UDP `48215` |
 | CHC CGI-410 | `192.168.1.110` | web `80`, NMEA TCP `9904` |
 | Velodyne VLP-16 ×4 (absent) | `192.168.1.201`–`.204` | data UDP `2368`–`2371` |
 
