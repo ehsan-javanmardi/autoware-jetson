@@ -176,6 +176,31 @@ Ten fields at Autoware's byte offsets, which is what `point_type: xyzircaedt` ex
 The width was ~8k points rather than the 32,768 of a full `1024x10` frame because the sensor was
 indoors and most beams had no return; unorganized mode drops those rather than emitting NaN.
 
+## Running the whole stack on a bench
+
+Two things have to be given, and neither announces itself:
+
+```bash
+./autoware_velodyne_kashiwa.sh lidar_profile:=os2_32 system_run_mode:=logging_simulation
+```
+
+`system_run_mode:=logging_simulation` disables the pose initializer's stop check. That check asks
+whether the vehicle is stationary by reading `/localization/kinematic_state`, which the EKF only
+publishes **after** localization has been initialized, so on a bench with no vehicle interface it
+can never be satisfied: a 2D Pose Estimate in RViz is rejected with `status code 1 'The vehicle is
+not stopped.'` and nothing happens. Without an initial pose there is no `map` frame at all, and
+since the RViz config uses `map` as its fixed frame, **nothing renders** — not the candidate poses,
+not the lidar. It looks like the lidar is dead when the actual cause is uninitialized localization.
+
+To look at the lidar before localization works, set the RViz fixed frame to `base_link`.
+
+> [!WARNING]
+> Killing `ros2 launch` does **not** stop the nodes it started. They keep running, and a second
+> launch then shares the graph with the first: duplicate node names, two pose initializers
+> disagreeing about the stop check, and errors from the old instance that make the new one look
+> broken. After stopping a run, check with
+> `ps -eo pid,etimes,args= | grep -- --ros-args | wc -l` and kill what is left over.
+
 ## Verifying
 
 ```bash

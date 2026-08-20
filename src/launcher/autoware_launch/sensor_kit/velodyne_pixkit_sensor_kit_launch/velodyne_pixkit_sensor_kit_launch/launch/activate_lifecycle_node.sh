@@ -13,10 +13,22 @@ set -u
 NODE="${1:?usage: $0 <node> [max_wait_seconds]}"
 MAX_WAIT="${2:-180}"
 
-# --no-daemon on every call: the ros2 CLI daemon caches the node graph and, once it dies
-# (seen as "RuntimeError:!rclpy.ok()"), every query returns empty instead of failing. This
-# loop would then wait out its whole timeout while the node sat there registered and healthy.
-state() { ros2 lifecycle get --no-daemon "$NODE" 2>/dev/null | cut -d' ' -f1; }
+# Everything here goes through the node's own lifecycle services rather than `ros2 lifecycle`,
+# which enumerates the node graph first. That enumeration is unreliable in a graph this size:
+# the ros2 CLI daemon caches the graph and answers with silence once its context dies (seen as
+# "RuntimeError:!rclpy.ok()"), and --no-daemon reports "Node not found" often enough under load
+# to matter. Either way the script would wait out its timeout while the driver sat registered
+# and healthy in unconfigured, publishing nothing. Service calls find the node every time.
+state() {
+    ros2 service call "$NODE/get_state" lifecycle_msgs/srv/GetState 2>/dev/null |
+        grep -oP "label='\K[^']+" | tail -1
+}
+
+# 1 = configure, 3 = activate (lifecycle_msgs/msg/Transition)
+transition() {
+    ros2 service call "$NODE/change_state" lifecycle_msgs/srv/ChangeState \
+        "{transition: {id: $1}}" 2>/dev/null | grep -q "success=True"
+}
 
 echo "[lifecycle] waiting for $NODE (up to ${MAX_WAIT}s)"
 deadline=$((SECONDS + MAX_WAIT))
@@ -34,13 +46,13 @@ for attempt in 1 2 3 4 5; do
     [ "$st" = active ] && break
     if [ "$st" = unconfigured ]; then
         echo "[lifecycle] configure (attempt $attempt)"
-        ros2 lifecycle set --no-daemon "$NODE" configure || true
+        transition 1 || true
         sleep 2
     fi
     st="$(state)"
     if [ "$st" = inactive ]; then
         echo "[lifecycle] activate (attempt $attempt)"
-        ros2 lifecycle set --no-daemon "$NODE" activate || true
+        transition 3 || true
         sleep 2
     fi
     st="$(state)"
