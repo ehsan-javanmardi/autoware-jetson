@@ -130,7 +130,7 @@ GNSS-based auto-init once RTK is configured — see `RTK_ICHIMILL_SETUP.md`).
 
 | Node | Status | Cause |
 | --- | --- | --- |
-| `usb_cam_node_exe` | dies | references package `pixkit_sensor_kit_launch`, which does not exist (real name `velodyne_pixkit_sensor_kit_launch`). No camera connected; left unfixed on purpose. |
+| `usb_cam_node_exe` | dies | references package `pixkit_sensor_kit_launch`, which does not exist (real name `pixkit_sensor_kit_launch`). No camera connected; left unfixed on purpose. |
 | `nmea_tcpclient_driver` | dies, exit 255 | GNSS NMEA TCP client to `192.168.1.110:9904`. Receiver is reachable; not yet diagnosed. |
 
 ## Lidar configuration changes made here

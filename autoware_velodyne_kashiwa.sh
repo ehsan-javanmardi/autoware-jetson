@@ -78,7 +78,7 @@ source "$AUTOWARE_WS/install/setup.bash"
 
 ros2 launch autoware_launch autoware.launch.xml \
     vehicle_model:=pixkit \
-    sensor_model:=velodyne_pixkit_sensor_kit \
+    sensor_model:=pixkit_sensor_kit \
     map_path:="$MAP_PATH" \
     pointcloud_map_file:="$PCD_FILE" \
     lanelet2_map_file:="$LANELET_FILE" \

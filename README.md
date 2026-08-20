@@ -53,7 +53,7 @@ Upstream `autoware` at tag 1.9.0 ships 458 packages in `src/`. This workspace ha
 | ------- | -------- | ------- |
 | `pix_hooke_driver`, `pix_hooke_driver_msgs` | `src/vehicle/external/pix_driver/` | Pixkit (PIX Hooke) vehicle interface — CAN control and status |
 | `pixkit_launch`, `pixkit_description` | `src/launcher/autoware_launch/vehicle/pixkit_launch/` | Vehicle model: URDF, mesh, calibration. Selected by `vehicle_model:=pixkit` |
-| `velodyne_pixkit_sensor_kit_launch`, `velodyne_pixkit_sensor_kit_description` | `src/launcher/autoware_launch/sensor_kit/velodyne_pixkit_sensor_kit_launch/` | Sensor kit: extrinsics and sensor bring-up. Selected by `sensor_model:=velodyne_pixkit_sensor_kit` |
+| `pixkit_sensor_kit_launch`, `pixkit_sensor_kit_description` | `src/launcher/autoware_launch/sensor_kit/pixkit_sensor_kit_launch/` | Sensor kit: extrinsics and sensor bring-up. Selected by `sensor_model:=pixkit_sensor_kit` |
 
 These sit alongside upstream's `sample_vehicle_launch` and `sample_sensor_kit_launch`, following the
 standard Autoware vehicle/sensor-kit layout.
@@ -272,7 +272,7 @@ Equivalent to:
 source install/setup.bash
 ros2 launch autoware_launch autoware.launch.xml \
     vehicle_model:=pixkit \
-    sensor_model:=velodyne_pixkit_sensor_kit \
+    sensor_model:=pixkit_sensor_kit \
     map_path:=/path/to/your/map \
     log_level:=debug
 ```

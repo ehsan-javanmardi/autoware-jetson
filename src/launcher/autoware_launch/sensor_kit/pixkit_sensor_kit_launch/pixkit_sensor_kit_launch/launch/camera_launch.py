@@ -49,7 +49,7 @@ def generate_launch_description():
 
     args, unknown = parser.parse_known_args(sys.argv[4:])
 
-    usb_cam_dir = get_package_share_directory('velodyne_pixkit_sensor_kit_launch')
+    usb_cam_dir = get_package_share_directory('pixkit_sensor_kit_launch')
 
     # get path to params file
     params_path = os.path.join(

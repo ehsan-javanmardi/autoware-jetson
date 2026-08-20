@@ -36,7 +36,7 @@
 
     <!-- Ouster OS-1 (top) -->
     <group if="$(var use_ouster)">
-      <include file="$(find-pkg-share velodyne_pixkit_sensor_kit_launch)/launch/os_sensor_top.launch.xml">
+      <include file="$(find-pkg-share pixkit_sensor_kit_launch)/launch/os_sensor_top.launch.xml">
         <arg name="sensor_hostname_top" value="$(var ouster_ip)"/>
         <arg name="udp_dest" value="$(var host_ip)"/>
         <arg name="viz" value="false"/>
@@ -142,7 +142,7 @@
       </load_composable_node>
     </group>
 
-    <include file="$(find-pkg-share velodyne_pixkit_sensor_kit_launch)/launch/pointcloud_preprocessor.launch.py">
+    <include file="$(find-pkg-share pixkit_sensor_kit_launch)/launch/pointcloud_preprocessor.launch.py">
       <arg name="base_frame" value="base_link"/>
       <arg name="use_intra_process" value="true"/>
       <arg name="use_multithread" value="true"/>
@@ -154,7 +154,7 @@
            input_topics, lidar_timestamp_offsets and lidar_timestamp_noise_window for every
            cloud that will actually arrive, and mismatched array lengths are a startup error. -->
       <arg name="concatenate_and_time_sync_node_param_path"
-           value="$(find-pkg-share velodyne_pixkit_sensor_kit_launch)/config/lidar_profiles/$(var lidar_profile).param.yaml"/>
+           value="$(find-pkg-share pixkit_sensor_kit_launch)/config/lidar_profiles/$(var lidar_profile).param.yaml"/>
     </include>
   </group>
 </launch>

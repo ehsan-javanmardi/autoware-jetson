@@ -41,7 +41,7 @@ Launching Autoware directly takes the same directory as `map_path`:
 ```bash
 ros2 launch autoware_launch autoware.launch.xml \
     vehicle_model:=pixkit \
-    sensor_model:=velodyne_pixkit_sensor_kit \
+    sensor_model:=pixkit_sensor_kit \
     map_path:=$PWD/autoware_map \
     pointcloud_map_file:=pointcloud_map.pcd \
     lanelet2_map_file:=lanelet2_map.osm

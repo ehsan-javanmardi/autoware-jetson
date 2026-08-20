@@ -11,8 +11,8 @@ The Pixkit's ultrasonic ring, read over CAN rather than over ethernet.
 | Packages | `ultra_sonic_radar_driver`, `ultra_sonic_radar_detector` |
 | Input | `/from_can_bus` |
 | Output | `ultra_sonic_radar`, then detected objects from the detector node |
-| Launch | [`ultrasonic_radar.launch.xml`](../../src/launcher/autoware_launch/sensor_kit/velodyne_pixkit_sensor_kit_launch/velodyne_pixkit_sensor_kit_launch/launch/ultrasonic_radar.launch.xml), [`ultra_sonic_radar_detector.launch.py`](../../src/launcher/autoware_launch/sensor_kit/velodyne_pixkit_sensor_kit_launch/velodyne_pixkit_sensor_kit_launch/launch/ultra_sonic_radar_detector.launch.py) |
-| Status | Both includes are **commented out** in [`sensing.launch.xml`](../../src/launcher/autoware_launch/sensor_kit/velodyne_pixkit_sensor_kit_launch/velodyne_pixkit_sensor_kit_launch/launch/sensing.launch.xml) |
+| Launch | [`ultrasonic_radar.launch.xml`](../../src/launcher/autoware_launch/sensor_kit/pixkit_sensor_kit_launch/pixkit_sensor_kit_launch/launch/ultrasonic_radar.launch.xml), [`ultra_sonic_radar_detector.launch.py`](../../src/launcher/autoware_launch/sensor_kit/pixkit_sensor_kit_launch/pixkit_sensor_kit_launch/launch/ultra_sonic_radar_detector.launch.py) |
+| Status | Both includes are **commented out** in [`sensing.launch.xml`](../../src/launcher/autoware_launch/sensor_kit/pixkit_sensor_kit_launch/pixkit_sensor_kit_launch/launch/sensing.launch.xml) |
 
 Twelve `ultrasonic_*` frames are declared in the sensor kit xacro, so the geometry is described
 even though nothing publishes on those frames today. Re-enabling means uncommenting the two

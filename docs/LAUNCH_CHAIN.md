@@ -8,7 +8,7 @@ chain can be followed by opening them in order.
 
 ```
 autoware.launch.xml                                     autoware_launch
-│   vehicle_model:=pixkit  sensor_model:=velodyne_pixkit_sensor_kit
+│   vehicle_model:=pixkit  sensor_model:=pixkit_sensor_kit
 │
 ├── pointcloud_container.launch.py                      autoware_launch
 │      creates /pointcloud_container, EMPTY. Components are loaded into it
@@ -23,7 +23,7 @@ autoware.launch.xml                                     autoware_launch
         │   push-ros-namespace "sensing"     ← where every /sensing/... name comes from
         │   sensor_launch_pkg = $(find-pkg-share $(var sensor_model)_launch)
         │
-        └── sensing.launch.xml                          velodyne_pixkit_sensor_kit_launch
+        └── sensing.launch.xml                          pixkit_sensor_kit_launch
             ├── lidar.launch.xml            ← the profile lives here
             │   ├── os_sensor_top.launch.xml         Ouster driver + activation
             │   ├── (velodyne block, off unless the profile asks for it)
@@ -43,8 +43,8 @@ autoware.launch.xml                                     autoware_launch
 <let name="sensor_launch_pkg" value="$(find-pkg-share $(var sensor_model)_launch)"/>
 ```
 
-`sensor_model:=velodyne_pixkit_sensor_kit` resolves to the package
-`velodyne_pixkit_sensor_kit_launch`, and Autoware then includes **that package's**
+`sensor_model:=pixkit_sensor_kit` resolves to the package
+`pixkit_sensor_kit_launch`, and Autoware then includes **that package's**
 `launch/sensing.launch.xml`. Nothing else connects the two: the name is the contract. The same
 trick appears twice more, for `$(var sensor_model)_description` (the TF frames and extrinsics) and
 `$(var vehicle_model)_description` (vehicle dimensions).
@@ -102,7 +102,7 @@ contract the rest of Autoware depends on.
 ros2 launch autoware_launch autoware.launch.xml --show-args
 
 # which package a sensor_model resolves to
-ros2 pkg prefix velodyne_pixkit_sensor_kit_launch
+ros2 pkg prefix pixkit_sensor_kit_launch
 
 # what actually ended up in the container
 ros2 node list | grep -v "^/sensing\|^/perception"   # components appear as their own nodes

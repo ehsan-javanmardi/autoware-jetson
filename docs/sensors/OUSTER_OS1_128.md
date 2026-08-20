@@ -22,11 +22,11 @@ that publishes Autoware's point type natively.
 
 | What | File |
 | ---- | ---- |
-| Which lidar is used at all | [`lidar.launch.xml`](../../src/launcher/autoware_launch/sensor_kit/velodyne_pixkit_sensor_kit_launch/velodyne_pixkit_sensor_kit_launch/launch/lidar.launch.xml) — `lidar_profile` (default `os1_128`), `os1_128_ip`, `host_ip` |
-| Driver parameters | [`os_sensor_top.launch.xml`](../../src/launcher/autoware_launch/sensor_kit/velodyne_pixkit_sensor_kit_launch/velodyne_pixkit_sensor_kit_launch/launch/os_sensor_top.launch.xml) |
-| Mounting position | [`sensors_calibration.yaml`](../../src/launcher/autoware_launch/sensor_kit/velodyne_pixkit_sensor_kit_launch/velodyne_pixkit_sensor_kit_description/config/sensors_calibration.yaml) — `base_link2os_lidar_top` |
-| Frame declaration | [`sensors.xacro`](../../src/launcher/autoware_launch/sensor_kit/velodyne_pixkit_sensor_kit_launch/velodyne_pixkit_sensor_kit_description/urdf/sensors.xacro) |
-| Which topic Autoware consumes | [`config/lidar_profiles/`](../../src/launcher/autoware_launch/sensor_kit/velodyne_pixkit_sensor_kit_launch/velodyne_pixkit_sensor_kit_launch/config/lidar_profiles/os1_128.param.yaml) |
+| Which lidar is used at all | [`lidar.launch.xml`](../../src/launcher/autoware_launch/sensor_kit/pixkit_sensor_kit_launch/pixkit_sensor_kit_launch/launch/lidar.launch.xml) — `lidar_profile` (default `os1_128`), `os1_128_ip`, `host_ip` |
+| Driver parameters | [`os_sensor_top.launch.xml`](../../src/launcher/autoware_launch/sensor_kit/pixkit_sensor_kit_launch/pixkit_sensor_kit_launch/launch/os_sensor_top.launch.xml) |
+| Mounting position | [`sensors_calibration.yaml`](../../src/launcher/autoware_launch/sensor_kit/pixkit_sensor_kit_launch/pixkit_sensor_kit_description/config/sensors_calibration.yaml) — `base_link2os_lidar_top` |
+| Frame declaration | [`sensors.xacro`](../../src/launcher/autoware_launch/sensor_kit/pixkit_sensor_kit_launch/pixkit_sensor_kit_description/urdf/sensors.xacro) |
+| Which topic Autoware consumes | [`config/lidar_profiles/`](../../src/launcher/autoware_launch/sensor_kit/pixkit_sensor_kit_launch/pixkit_sensor_kit_launch/config/lidar_profiles/os1_128.param.yaml) |
 
 The launch file sets six parameters that matter and that are easy to get wrong:
 
@@ -77,7 +77,7 @@ the concatenate node copies them straight through; and the driver's own static t
 
    ```bash
    ros2 launch autoware_launch autoware.launch.xml \
-       vehicle_model:=pixkit sensor_model:=velodyne_pixkit_sensor_kit \
+       vehicle_model:=pixkit sensor_model:=pixkit_sensor_kit \
        map_path:=$PWD/autoware_map
    # or override for a one-off:
    #   lidar_profile:=os1_128 os1_128_ip:=192.168.1.130 host_ip:=192.168.1.100
@@ -116,7 +116,7 @@ already relative to the message stamp, so nothing else has to change.
 ## Known issues and gotchas
 
 - **The driver is a lifecycle node.** It comes up unconfigured and does nothing until it is
-  configured and activated. [`activate_lifecycle_node.sh`](../../src/launcher/autoware_launch/sensor_kit/velodyne_pixkit_sensor_kit_launch/velodyne_pixkit_sensor_kit_launch/launch/activate_lifecycle_node.sh)
+  configured and activated. [`activate_lifecycle_node.sh`](../../src/launcher/autoware_launch/sensor_kit/pixkit_sensor_kit_launch/pixkit_sensor_kit_launch/launch/activate_lifecycle_node.sh)
   waits for the node to register and then drives the transitions. The upstream approach used two
   fixed `sleep` calls and loses that race on a busy machine, leaving the driver silent with no
   publishers and no error.

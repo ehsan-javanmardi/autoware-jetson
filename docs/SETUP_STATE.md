@@ -232,7 +232,7 @@ Autoware RViz config displays. Options, cheapest first:
 
 1. Relay: `ros2 run topic_tools relay /sensing/lidar/top/ouster/points /sensing/lidar/concatenated/pointcloud`
 2. Replace the concat component with a passthrough / crop-box chain in
-   `velodyne_pixkit_sensor_kit_launch/launch/pointcloud_preprocessor.launch.py`
+   `pixkit_sensor_kit_launch/launch/pointcloud_preprocessor.launch.py`
 3. Connect the other two Ousters the Pixkit design expects (`os_rl_config.yaml`,
    `os_rr_config.yaml`)
 

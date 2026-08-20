@@ -125,7 +125,7 @@
     (self-labelled "HACK"); those lose the race on a busy machine and fail with
     "Node not found", leaving the driver unconfigured with no publishers. -->
   <executable
-    cmd="$(find-pkg-share velodyne_pixkit_sensor_kit_launch)/launch/activate_lifecycle_node.sh $(var ouster_ns_top)/os_driver 180"
+    cmd="$(find-pkg-share pixkit_sensor_kit_launch)/launch/activate_lifecycle_node.sh $(var ouster_ns_top)/os_driver 180"
     output="screen"/>
 
 <include if="$(var viz)" file="$(find-pkg-share ouster_ros)/launch/rviz.launch.xml">

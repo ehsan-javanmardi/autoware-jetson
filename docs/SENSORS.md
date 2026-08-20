@@ -49,7 +49,7 @@ sensor kit per combination.
 
 ```bash
 ros2 launch autoware_launch autoware.launch.xml \
-    vehicle_model:=pixkit sensor_model:=velodyne_pixkit_sensor_kit \
+    vehicle_model:=pixkit sensor_model:=pixkit_sensor_kit \
     map_path:=$PWD/autoware_map \
     lidar_profile:=os2_32
 ```
@@ -73,7 +73,7 @@ A profile decides two things, and they have to agree with each other:
 
 Copy an existing profile file, list every input topic, give each one an offset and a noise window,
 and add the profile name to the `lidar_profile` conditions in
-[`lidar.launch.xml`](../src/launcher/autoware_launch/sensor_kit/velodyne_pixkit_sensor_kit_launch/velodyne_pixkit_sensor_kit_launch/launch/lidar.launch.xml).
+[`lidar.launch.xml`](../src/launcher/autoware_launch/sensor_kit/pixkit_sensor_kit_launch/pixkit_sensor_kit_launch/launch/lidar.launch.xml).
 The conditions are plain string tests, so a name like `os1_128_velodyne` already starts the Ouster
 (it starts with `os`) and the Velodynes (it contains `velodyne`) without any further edit — only
 the matching `.param.yaml` has to exist.
