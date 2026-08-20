@@ -1,6 +1,6 @@
-# Ouster OS-1-128 — primary lidar
+# Ouster OS-1-128 — 128 beam lidar
 
-The only lidar fitted to this vehicle, and the one Autoware localizes and perceives with. It runs
+The 128 beam Ouster, and the default lidar of this workspace: `lidar_profile:=os1_128`. It runs
 the [autoware_ouster_ros](https://github.com/ehsan-javanmardi/autoware_ouster_ros) driver, a fork
 that publishes Autoware's point type natively.
 
@@ -10,7 +10,7 @@ that publishes Autoware's point type natively.
 | --- | --- |
 | Model | Ouster OS-1, 128 beams |
 | Address | `192.168.1.126` (mDNS `os-122345000355.local`, web UI `:80`, data `:7501`) |
-| Host address | `192.168.1.100/24` on the sensor LAN, static, **no gateway** |
+| Host address | `192.168.1.20/24` on the sensor LAN, static, **no gateway** |
 | UDP ports | lidar `38672`, imu `48215` |
 | Mode | `1024x10`, profile `RNG19_RFL8_SIG16_NIR16` |
 | Point type | `xyzircaedt` — `autoware::point_types::PointXYZIRCAEDT` |
@@ -22,11 +22,11 @@ that publishes Autoware's point type natively.
 
 | What | File |
 | ---- | ---- |
-| Which lidar is used at all | [`lidar.launch.xml`](../../src/launcher/autoware_launch/sensor_kit/velodyne_pixkit_sensor_kit_launch/velodyne_pixkit_sensor_kit_launch/launch/lidar.launch.xml) — `use_ouster` (default `true`), `use_velodyne` (default `false`), `ouster_ip`, `host_ip` |
+| Which lidar is used at all | [`lidar.launch.xml`](../../src/launcher/autoware_launch/sensor_kit/velodyne_pixkit_sensor_kit_launch/velodyne_pixkit_sensor_kit_launch/launch/lidar.launch.xml) — `lidar_profile` (default `os1_128`), `os1_128_ip`, `host_ip` |
 | Driver parameters | [`os_sensor_top.launch.xml`](../../src/launcher/autoware_launch/sensor_kit/velodyne_pixkit_sensor_kit_launch/velodyne_pixkit_sensor_kit_launch/launch/os_sensor_top.launch.xml) |
 | Mounting position | [`sensors_calibration.yaml`](../../src/launcher/autoware_launch/sensor_kit/velodyne_pixkit_sensor_kit_launch/velodyne_pixkit_sensor_kit_description/config/sensors_calibration.yaml) — `base_link2os_lidar_top` |
 | Frame declaration | [`sensors.xacro`](../../src/launcher/autoware_launch/sensor_kit/velodyne_pixkit_sensor_kit_launch/velodyne_pixkit_sensor_kit_description/urdf/sensors.xacro) |
-| Which topic Autoware consumes | [`concatenate_and_time_sync_node.param.yaml`](../../src/launcher/autoware_launch/sensor_kit/velodyne_pixkit_sensor_kit_launch/velodyne_pixkit_sensor_kit_launch/config/concatenate_and_time_sync_node.param.yaml) |
+| Which topic Autoware consumes | [`config/lidar_profiles/`](../../src/launcher/autoware_launch/sensor_kit/velodyne_pixkit_sensor_kit_launch/velodyne_pixkit_sensor_kit_launch/config/lidar_profiles/os1_128.param.yaml) |
 
 The launch file sets six parameters that matter and that are easy to get wrong:
 
@@ -55,7 +55,7 @@ the concatenate node copies them straight through; and the driver's own static t
 
    ```bash
    nmcli con add type ethernet ifname enp3s0 con-name sensor-lan \
-       ipv4.method manual ipv4.addresses 192.168.1.100/24 ipv4.never-default yes
+       ipv4.method manual ipv4.addresses 192.168.1.20/24 ipv4.never-default yes
    ```
 
    If the interface gets no IPv4 at all, see the NetworkManager note in
@@ -80,10 +80,10 @@ the concatenate node copies them straight through; and the driver's own static t
        vehicle_model:=pixkit sensor_model:=velodyne_pixkit_sensor_kit \
        map_path:=$PWD/autoware_map
    # or override for a one-off:
-   #   ouster_ip:=192.168.1.130 host_ip:=192.168.1.100
+   #   lidar_profile:=os1_128 os1_128_ip:=192.168.1.130 host_ip:=192.168.1.20
    ```
 
-   To change it permanently, edit the `ouster_ip` and `host_ip` defaults in `lidar.launch.xml`.
+   To change it permanently, edit the `os1_128_ip` and `host_ip` defaults in `lidar.launch.xml`.
    `host_ip` becomes the driver's `udp_dest`: the sensor sends its packets there, so it has to be
    the host's address **on the sensor LAN**, not its wifi address.
 
@@ -126,7 +126,7 @@ already relative to the message stamp, so nothing else has to change.
 - **Two more Ouster launch files exist** (`os_sensor_rl.launch.xml`, `os_sensor_rr.launch.xml`) for
   rear-left and rear-right units that this vehicle does not have. `lidar.launch.xml` does not
   include them.
-- **Reserved addresses.** Do not assign `.102`, `.110`, `.125`, `.126` or `.200` on the sensor LAN.
+- **Reserved addresses.** See the address map in [`SENSORS.md`](../SENSORS.md) before assigning anything on the sensor LAN.
 
 ## Driver documentation
 

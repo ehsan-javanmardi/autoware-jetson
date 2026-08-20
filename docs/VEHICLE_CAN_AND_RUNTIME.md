@@ -137,7 +137,7 @@ GNSS-based auto-init once RTK is configured — see `RTK_ICHIMILL_SETUP.md`).
 
 `launch/lidar.launch.xml` was rewritten to drive the Ouster instead of four Velodyne
 VLP16s (`192.168.1.201-204`) that are not present, and `host_ip` changed from the shipped
-`192.168.1.102` to this machine's `192.168.1.100`. Revert with
+`192.168.1.102` to this machine's `192.168.1.20`. Revert with
 `use_velodyne:=true use_ouster:=false`. Originals in
 `../pixkit_setup_backups/ouster_launch_change/`.
 

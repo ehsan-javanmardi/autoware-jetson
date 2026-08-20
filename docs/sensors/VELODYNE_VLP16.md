@@ -24,13 +24,13 @@ detection, which is why their ranges and azimuth windows are clipped.
 ros2 launch autoware_launch autoware.launch.xml \
     vehicle_model:=pixkit sensor_model:=velodyne_pixkit_sensor_kit \
     map_path:=$PWD/autoware_map \
-    use_velodyne:=true use_ouster:=false
+    lidar_profile:=velodyne
 ```
 
 Running both lidars at once needs more than the two flags:
 
 1. **The concatenate node has to know about every input.**
-   [`concatenate_and_time_sync_node.param.yaml`](../../src/launcher/autoware_launch/sensor_kit/velodyne_pixkit_sensor_kit_launch/velodyne_pixkit_sensor_kit_launch/config/concatenate_and_time_sync_node.param.yaml)
+   [`config/lidar_profiles/`](../../src/launcher/autoware_launch/sensor_kit/velodyne_pixkit_sensor_kit_launch/velodyne_pixkit_sensor_kit_launch/config/lidar_profiles/os1_128.param.yaml)
    currently lists one topic, and `lidar_timestamp_offsets` and `lidar_timestamp_noise_window`
    need one entry per input topic. A mismatched array length is a startup failure.
 2. **The Velodyne driver publishes `PointXYZIRC`-incompatible clouds** unless run through the

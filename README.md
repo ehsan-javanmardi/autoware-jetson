@@ -237,15 +237,20 @@ See [Run on Pixkit](#run-on-pixkit) below. The Kashiwanoha map is committed in
 
 ## Sensors
 
-One Ouster OS-1-128 on the sensor LAN at `192.168.1.126`, a CHC CGI-410 GNSS/INS at
-`192.168.1.110`, and a USB camera for traffic lights. The four VLP-16s of the stock Pixkit
-configuration are not fitted and are disabled at launch.
+Two Ouster lidars share the top mount and run one at a time — an **OS-1-128** at `192.168.1.126`
+and an **OS-2-32** at `192.168.1.100` — alongside a CHC CGI-410 GNSS/INS at `192.168.1.110` and a
+USB camera for traffic lights. The four VLP-16s of the stock Pixkit configuration are not fitted.
 
-See [`docs/SENSORS.md`](docs/SENSORS.md) for the address map and a page per sensor —
-[Ouster](docs/sensors/OUSTER_OS1.md), [GNSS/INS](docs/sensors/CHC_CGI410.md),
-[camera](docs/sensors/CAMERA.md), [Velodyne](docs/sensors/VELODYNE_VLP16.md),
-[ultrasonic and radar](docs/sensors/ULTRASONIC_RADAR.md) — each covering the addressing, the files
-that configure it, and what to change when moving to another vehicle.
+Which lidars are launched is chosen with one argument rather than by editing files:
+
+```bash
+./autoware_velodyne_kashiwa.sh autoware_map lidar_profile:=os2_32   # os1_128 | os2_32 | velodyne
+```
+
+See [`docs/SENSORS.md`](docs/SENSORS.md) for the address map, the profile mechanism and a page per
+sensor — [OS-1-128](docs/sensors/OUSTER_OS1_128.md), [OS-2-32](docs/sensors/OUSTER_OS2_32.md),
+[GNSS/INS](docs/sensors/CHC_CGI410.md), [camera](docs/sensors/CAMERA.md),
+[Velodyne](docs/sensors/VELODYNE_VLP16.md), [ultrasonic and radar](docs/sensors/ULTRASONIC_RADAR.md).
 
 ## Maps
 

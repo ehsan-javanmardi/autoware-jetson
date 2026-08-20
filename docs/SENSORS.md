@@ -5,7 +5,8 @@ what to change when the hardware moves to another vehicle.
 
 | Sensor | Status | Address | Page |
 | ------ | ------ | ------- | ---- |
-| Ouster OS-1-128 lidar | **in use** | `192.168.1.126` | [OUSTER_OS1.md](sensors/OUSTER_OS1.md) |
+| Ouster OS-1-128 lidar | **in use** | `192.168.1.126` | [OUSTER_OS1_128.md](sensors/OUSTER_OS1_128.md) |
+| Ouster OS-2-32 lidar | **in use** | `192.168.1.100` | [OUSTER_OS2_32.md](sensors/OUSTER_OS2_32.md) |
 | CHC CGI-410 GNSS / INS | **in use** | `192.168.1.110` | [CHC_CGI410.md](sensors/CHC_CGI410.md) |
 | USB camera (traffic light) | **in use** | `/dev/video2` | [CAMERA.md](sensors/CAMERA.md) |
 | Velodyne VLP-16 ×4 | not fitted | `192.168.1.201`–`.204` | [VELODYNE_VLP16.md](sensors/VELODYNE_VLP16.md) |
@@ -16,22 +17,83 @@ before anything moves: see [VEHICLE_CAN_AND_RUNTIME.md](VEHICLE_CAN_AND_RUNTIME.
 
 ## Sensor LAN
 
-Everything on ethernet shares one segment with the host at `192.168.1.100/24`, static and with
+Everything on ethernet shares one segment with the host at `192.168.1.20/24`, static and with
 **no gateway**, so the default route stays on wifi or USB ethernet.
 
 | Device | Address | Ports |
 | ------ | ------- | ----- |
-| This PC (`enp3s0`) | `192.168.1.100/24` | — |
+| This PC (`enp3s0`) | `192.168.1.20/24` | — |
 | Ouster OS-1-128 | `192.168.1.126` | web `80`, data `7501`, lidar UDP `38672`, imu UDP `48215` |
+| Ouster OS-2-32 | `192.168.1.100` | web `80`, data `7501`, lidar UDP `38672`, imu UDP `48215` |
 | CHC CGI-410 | `192.168.1.110` | web `80`, NMEA TCP `9904` |
 | Velodyne VLP-16 ×4 (absent) | `192.168.1.201`–`.204` | data UDP `2368`–`2371` |
 
-Do not assign `.102`, `.110`, `.125`, `.126` or `.200`. Two of those are in use, and the other
-three appear in configuration files that are still around.
+Do not assign `.20`, `.100`, `.110`, `.125`, `.126`, `.102` or `.200`. The first four are in use;
+the rest appear in configuration files that are still around.
+
+The host used to sit at `.100`, which is now the OS-2-32's address. Anything that still says
+`192.168.1.100` and means "this machine" is stale — including the `host_ip` default, which was
+corrected to `.20`. A `host_ip` pointing at `.100` now tells the lidar to send its packets to the
+other lidar.
 
 Because the segment has no gateway, a device that needs the internet — the GNSS receiver reaching
 the NTRIP caster — is routed by `pixkit-sensor-nat.service`, which masquerades `192.168.1.0/24`
 out of the default-route interface. See [SETUP_STATE.md](SETUP_STATE.md).
+
+## Sensor combinations
+
+The lidar set changes between experiments: one Ouster, the other Ouster, the four Velodynes, or a
+mixture. This is handled with a **`lidar_profile` argument inside the one sensor kit**, not with a
+sensor kit per combination.
+
+```bash
+ros2 launch autoware_launch autoware.launch.xml \
+    vehicle_model:=pixkit sensor_model:=velodyne_pixkit_sensor_kit \
+    map_path:=$PWD/autoware_map \
+    lidar_profile:=os2_32
+```
+
+| Profile | Fitted lidars | Concat config |
+| ------- | ------------- | ------------- |
+| `os1_128` (default) | Ouster OS-1-128 at `.126` | `config/lidar_profiles/os1_128.param.yaml` |
+| `os2_32` | Ouster OS-2-32 at `.100` | `config/lidar_profiles/os2_32.param.yaml` |
+| `velodyne` | four VLP-16s at `.201`–`.204` | `config/lidar_profiles/velodyne.param.yaml` (untested) |
+
+A profile decides two things, and they have to agree with each other:
+
+1. **Which drivers start**, through `use_ouster` / `use_velodyne` and the address the Ouster
+   driver is pointed at.
+2. **Which clouds the concatenate node waits for.** `input_topics`, `lidar_timestamp_offsets` and
+   `lidar_timestamp_noise_window` need one entry per cloud that will actually arrive. Too many
+   entries and the node waits forever for a topic nobody publishes; mismatched array lengths are a
+   startup error.
+
+### Adding a combination
+
+Copy an existing profile file, list every input topic, give each one an offset and a noise window,
+and add the profile name to the `lidar_profile` conditions in
+[`lidar.launch.xml`](../src/launcher/autoware_launch/sensor_kit/velodyne_pixkit_sensor_kit_launch/velodyne_pixkit_sensor_kit_launch/launch/lidar.launch.xml).
+The conditions are plain string tests, so a name like `os1_128_velodyne` already starts the Ouster
+(it starts with `os`) and the Velodynes (it contains `velodyne`) without any further edit — only
+the matching `.param.yaml` has to exist.
+
+Extrinsics do not need to be part of a profile. Every mount can have its own frame and its own
+entry in `sensors_calibration.yaml`, and frames belonging to sensors that are not running simply
+sit unused in the TF tree. The exception is two sensors sharing one physical mount, like the two
+Ousters here: they share `os_lidar_top`, so that entry has to describe whichever unit is bolted on.
+
+### Why not one sensor kit per combination
+
+A sensor kit is the natural unit for **a vehicle**, not for a configuration of one vehicle. It
+carries the GNSS, IMU, camera and CAN bring-up as well as the lidars, and none of that changes when
+a lidar is swapped. Splitting by lidar set would copy `gnss.launch.xml`, `imu.launch.xml`,
+`camera_launch.py`, `sensing.launch.xml` and the whole description package into every kit, and
+those copies drift: a fix to the GNSS launch would have to be applied N times, and the one that
+gets missed is discovered on the vehicle.
+
+Make a second sensor kit when the **vehicle** differs — a different `base_link` geometry, a
+different vehicle interface, a different set of non-lidar sensors. Use a profile when the same
+vehicle carries a different lidar set.
 
 ## Common tasks
 

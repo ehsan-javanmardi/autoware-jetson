@@ -1,17 +1,27 @@
 <launch>
   <arg name="launch_driver" default="true"/>
 
-  <!-- Host address that sensors send their UDP data to. The shipped Pixkit default was
-       192.168.1.102; this machine's sensor-LAN address is 192.168.1.100 (enp3s0). -->
-  <arg name="host_ip" default="192.168.1.100"/>
+  <!-- Host address the sensors send their UDP data to. This becomes the driver's udp_dest,
+       so it has to be this machine's address ON THE SENSOR LAN (enp3s0), not the address it
+       reaches the internet by. Pointing it anywhere else gives a driver that connects and
+       configures the sensor normally and then never receives a packet. -->
+  <arg name="host_ip" default="192.168.1.20"/>
 
-  <!-- Lidar selection. This vehicle currently has a single Ouster OS-1 at 192.168.1.126.
-       The original Pixkit config launched four Velodyne VLP16s (192.168.1.201-204) and never
-       referenced the os_sensor_*.launch.xml files that ship in this package. Set
-       use_velodyne:=true / use_ouster:=false to restore the original behaviour. -->
-  <arg name="use_ouster" default="true"/>
-  <arg name="use_velodyne" default="false"/>
-  <arg name="ouster_ip" default="192.168.1.126" description="Ouster OS-1 sensor address"/>
+  <!-- Which set of lidars is fitted. Each profile selects the drivers to start and a matching
+       concatenate configuration from config/lidar_profiles/, whose input_topics and timestamp
+       arrays have to agree with the drivers that actually publish. See docs/SENSORS.md. -->
+  <arg name="lidar_profile" default="os1_128"
+       description="fitted lidar set: os1_128 | os2_32 | velodyne"/>
+
+  <arg name="os1_128_ip" default="192.168.1.126" description="Ouster OS-1-128 address"/>
+  <arg name="os2_32_ip" default="192.168.1.100" description="Ouster OS-2-32 address"/>
+
+  <let name="use_ouster"
+       value="$(eval &quot;'true' if '$(var lidar_profile)'.startswith('os') else 'false'&quot;)"/>
+  <let name="use_velodyne"
+       value="$(eval &quot;'true' if 'velodyne' in '$(var lidar_profile)' else 'false'&quot;)"/>
+  <let name="ouster_ip"
+       value="$(eval &quot;'$(var os2_32_ip)' if '$(var lidar_profile)' == 'os2_32' else '$(var os1_128_ip)'&quot;)"/>
 
   <arg name="use_concat_filter" default="true"/>
   <arg name="vehicle_id" default="$(env VEHICLE_ID default)"/>
@@ -105,10 +115,11 @@
       <arg name="use_intra_process" value="true"/>
       <arg name="use_multithread" value="true"/>
       <arg name="pointcloud_container_name" value="$(var pointcloud_container_name)"/>
-      <!-- Use this sensor kit's own concat config (single Ouster input) instead of the
-           sample_sensor_kit default, which expects three Velodyne topics. -->
+      <!-- One concatenate configuration per lidar profile: the node needs one entry in
+           input_topics, lidar_timestamp_offsets and lidar_timestamp_noise_window for every
+           cloud that will actually arrive, and mismatched array lengths are a startup error. -->
       <arg name="concatenate_and_time_sync_node_param_path"
-           value="$(find-pkg-share velodyne_pixkit_sensor_kit_launch)/config/concatenate_and_time_sync_node.param.yaml"/>
+           value="$(find-pkg-share velodyne_pixkit_sensor_kit_launch)/config/lidar_profiles/$(var lidar_profile).param.yaml"/>
     </include>
   </group>
 </launch>

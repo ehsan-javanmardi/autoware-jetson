@@ -78,8 +78,9 @@ Remaining work is RTK receiver config + kernel cleanup + supplying a map.
 
 | Device | Address | Notes |
 | --- | --- | --- |
-| **This PC** on sensor LAN | **192.168.1.100/24** on `enp3s0` | static, **no gateway**, `never-default` |
+| **This PC** on sensor LAN | **192.168.1.20/24** on `enp3s0` | static, **no gateway**, `never-default`. Was `.100` until the OS-2-32 took that address. |
 | **Ouster OS-1-128 lidar** | **192.168.1.126** | `os-122345000355.local`, web UI :80, data :7501 |
+| **Ouster OS-2-32 lidar** | **192.168.1.100** | web UI :80, data :7501 |
 | **CHC CGI-410 GNSS/INS** | **192.168.1.110** | web UI :80 (`admin`/`password`), NMEA TCP **:9904** |
 | ichimill NTRIP caster | `ntrip.ales-corp.co.jp:2101` (`52.199.90.201`) | mount point `RTCM32M7S` |
 | Internet | wifi `wlp4s0` / USB eth `enx1625e5f9a0e6` | keeps the default route |
@@ -201,7 +202,7 @@ Afterwards `dkms status` should list the NVIDIA module for only the remaining ke
 ### 3. RTK
 
 See `RTK_ICHIMILL_SETUP.md`. Host side is done; the receiver still needs its gateway
-set to `192.168.1.100` plus the NTRIP client pointed at ichimill account **#4**.
+set to `192.168.1.20` plus the NTRIP client pointed at ichimill account **#4**.
 Writes to the receiver were blocked by the permission classifier, so this is either a
 manual step in Chrome or needs a Bash permission rule.
 
