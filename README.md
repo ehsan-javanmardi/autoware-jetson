@@ -112,6 +112,10 @@ Nine packages were overwritten in place by the Pixkit versions (same paths, so n
   loses the race on a busy machine, and the concatenate node is configured for that single input.
 - **`can1` launch files** added to `src/sensor_component/ros2_socketcan/ros2_socketcan/launch/`
   for the second CAN interface.
+- **`fixposition_driver_ros2` manifest completed.** Its `CMakeLists.txt` calls `find_package` on
+  `autoware_sensing_msgs`, `tf2`, `tf2_eigen` and `tf2_ros`, none of which were declared in
+  `package.xml`. colcon only exposes declared dependencies to a package's build, so it configured
+  successfully only while a Debian copy of `autoware_sensing_msgs` happened to be installed.
 - **`autoware_velodyne_kashiwa.sh` rewritten.** The upstream copy hardcoded
   `/home/autoware/pixkit_autoware_0.45.1/...`. It now resolves the workspace from its own location,
   accepts the map path as an argument or `$AUTOWARE_MAP_PATH`, and fails with a clear message if the
@@ -119,27 +123,97 @@ Nine packages were overwritten in place by the Pixkit versions (same paths, so n
 
 ---
 
-## Build
+## Install and build
 
-Prerequisites are installed by the standard Autoware Ansible playbook (see the
+Ubuntu 22.04 with ROS 2 Humble. Roughly 40 minutes of build time and 30 GB of disk
+(`build/` alone is ~4.5 GB).
+
+### 1. Clone
+
+```bash
+git clone git@github.com:ehsan-javanmardi/pix_autoware.git
+cd pix_autoware
+```
+
+`src/` is committed in this repository, so **there is no `vcs import` step**. Every package is
+already at the revision recorded in
+[`repositories/imported-revisions.repos`](repositories/imported-revisions.repos).
+
+### 2. Prerequisites
+
+Installed by the standard Autoware Ansible playbook (see the
 [source installation guide](https://autowarefoundation.github.io/autoware-documentation/main/installation/autoware/source-installation/)):
 
 ```bash
-cd pixkit_autoware
 bash ansible/scripts/install-ansible.sh
 ansible-galaxy collection install -f -r ansible-galaxy-requirements.yaml
 ansible-playbook autoware.dev_env.install_dev_env
 ```
 
-`src/` is committed in this repository, so there is nothing to import. Resolve the system
-dependencies and build:
+### 3. System dependencies
 
 ```bash
 source /opt/ros/humble/setup.bash
 rosdep update
 rosdep install -y --from-paths src --ignore-src --rosdistro "$ROS_DISTRO"
+```
+
+### 4. Check that no Autoware package is installed twice
+
+> [!IMPORTANT]
+> This is the one step that is easy to skip and expensive to debug. A package that exists **both**
+> in `src/` and as a `ros-humble-*` Debian package will usually build against the wrong one:
+> `/opt/ros/humble/include` is a single flat directory that sits near the front of the include
+> path, so its headers shadow the workspace's own, no matter what CMake resolved the package
+> directory to. When the two copies are different versions, the result is a compile error that
+> points at source code which is perfectly correct.
+
+List the packages that exist in both places:
+
+```bash
+comm -12 \
+  <(colcon list --base-paths src --names-only | sort) \
+  <(dpkg-query -W -f='${Package}\n' 'ros-humble-*' | sed 's/^ros-humble-//; s/-/_/g' | sort)
+```
+
+Ideally this prints nothing. If it lists packages, remove those Debian packages — this workspace
+builds them from source:
+
+```bash
+sudo apt-get remove -y <the packages, as ros-humble-name-with-hyphens>
+sudo apt-get autoremove -y
+```
+
+Read what `apt` says it will remove before confirming. On a machine that only ever built this
+workspace the list is empty; it fills up when `rosdep` was previously run against a **different**
+Autoware tree, because rosdep installs a Debian package for every dependency it cannot find in
+`src/`.
+
+### 5. Build
+
+```bash
 colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
 ```
+
+510 packages, about 40 minutes on an 8-core machine. Memory, not compile errors, is the usual
+failure mode: if a job is killed, retry with `--parallel-workers 4` (or fewer). A failed build can
+be resumed by re-running the same command; packages that already finished are skipped.
+
+Success looks like `Summary: 510 packages finished` with no `packages failed` and no `aborted`
+line. Several dozen packages report `stderr output`; those are compiler warnings, not failures.
+
+### 6. Run
+
+See [Run on Pixkit](#run-on-pixkit) below. A map is not included in this repository and has to be
+supplied separately.
+
+### Troubleshooting
+
+| Symptom | Cause and fix |
+| ------- | ------------- |
+| `rosdep` aborts with `Multiple packages found with the same name "..."` | Two copies of the same package under `src/`. `catkin_pkg` refuses to scan such a tree. Find them with the `colcon list` command above and delete or `COLCON_IGNORE` the copy that does not belong. This is what happens when a Pixkit release built against an older Autoware is copied over a newer `src/`: the packages it ships may have been restructured upstream since, so the copy lands beside the current ones instead of replacing them. |
+| `no matching function for call to ...`, where the header in the error path is under `/opt/ros/humble/include` while the `.cpp` is under `src/` | A Debian package is shadowing its source counterpart. Go back to step 4. |
+| `Could not find a package configuration file provided by "X"`, and `X` is in `src/` and built | The package's `CMakeLists.txt` calls `find_package(X)` but its `package.xml` does not declare `X`. colcon only puts the prefixes of **declared** dependencies on `CMAKE_PREFIX_PATH`, so a package that builds only because a Debian copy of `X` happens to be installed will break the moment that copy is removed. Add `<depend>X</depend>` to the manifest. |
 
 ## Run on Pixkit
 
