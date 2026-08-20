@@ -235,6 +235,18 @@ See [Run on Pixkit](#run-on-pixkit) below. The Kashiwanoha map is committed in
 | `no matching function for call to ...`, where the header in the error path is under `/opt/ros/humble/include` while the `.cpp` is under `src/` | A Debian package is shadowing its source counterpart. Go back to step 4. |
 | `Could not find a package configuration file provided by "X"`, and `X` is in `src/` and built | The package's `CMakeLists.txt` calls `find_package(X)` but its `package.xml` does not declare `X`. colcon only puts the prefixes of **declared** dependencies on `CMAKE_PREFIX_PATH`, so a package that builds only because a Debian copy of `X` happens to be installed will break the moment that copy is removed. Add `<depend>X</depend>` to the manifest. |
 
+## Sensors
+
+One Ouster OS-1-128 on the sensor LAN at `192.168.1.126`, a CHC CGI-410 GNSS/INS at
+`192.168.1.110`, and a USB camera for traffic lights. The four VLP-16s of the stock Pixkit
+configuration are not fitted and are disabled at launch.
+
+See [`docs/SENSORS.md`](docs/SENSORS.md) for the address map and a page per sensor —
+[Ouster](docs/sensors/OUSTER_OS1.md), [GNSS/INS](docs/sensors/CHC_CGI410.md),
+[camera](docs/sensors/CAMERA.md), [Velodyne](docs/sensors/VELODYNE_VLP16.md),
+[ultrasonic and radar](docs/sensors/ULTRASONIC_RADAR.md) — each covering the addressing, the files
+that configure it, and what to change when moving to another vehicle.
+
 ## Maps
 
 A point cloud map and a lanelet2 map are committed in [`autoware_map/`](autoware_map): Kashiwanoha
@@ -312,6 +324,7 @@ Everything written for this vehicle lives in [`docs/`](docs/):
 
 | Document | What it covers |
 | -------- | -------------- |
+| [`docs/SENSORS.md`](docs/SENSORS.md) | Index of the sensors on this vehicle, the sensor LAN address map, and a page per sensor under [`docs/sensors/`](docs/sensors) covering its addressing, configuration files, topics and frames. |
 | [`docs/MAPS.md`](docs/MAPS.md) | The maps in `autoware_map/`, what each file is for, and what to check before adding another one. |
 | [`docs/SETUP_STATE.md`](docs/SETUP_STATE.md) | Setup state and handover notes: what is configured, what is not, and where each subsystem stands. Read this first when resuming work. |
 | [`docs/VEHICLE_CAN_AND_RUNTIME.md`](docs/VEHICLE_CAN_AND_RUNTIME.md) | CAN bring-up and the runtime picture from a real launch: interfaces, topics, and what has to be running before autonomy engages. |
