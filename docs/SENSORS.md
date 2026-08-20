@@ -99,7 +99,8 @@ vehicle carries a different lidar set.
 ## Common tasks
 
 **Which sensors does a launch actually start?** `sensing.launch.xml` in the sensor kit is the top
-of the tree: lidar, IMU, GNSS and camera are included, ultrasonic radar is commented out.
+of the tree: lidar, IMU, GNSS and camera are included, ultrasonic radar is commented out. See
+[LAUNCH_CHAIN.md](LAUNCH_CHAIN.md) for how Autoware reaches that file and what happens after it.
 
 **Add a sensor to the vehicle.** Three things have to line up, and forgetting any one of them
 produces a silent failure rather than an error:
