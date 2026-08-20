@@ -1,12 +1,12 @@
 # Pixkit Autoware
 
-Autoware workspace adapted for the **[Pixkit 2.0](https://www.pixmoving.com/pixkit)** research vehicle
+Autoware workspace adapted for the **[Pixkit 3.0](https://www.pixmoving.com/pixkit)** research vehicle
 equipped with a Velodyne VLP LiDAR.
 
 This is an **upstream Autoware source tree with the Pixkit vehicle and sensor integration merged in**.
 Everything upstream Autoware does still applies; this file documents only what is specific to this
 workspace. The original upstream README is preserved as
-[`README.upstream-autoware.md`](README.upstream-autoware.md).
+[`docs/README.upstream-autoware.md`](docs/README.upstream-autoware.md).
 
 ---
 
@@ -69,10 +69,6 @@ standard Autoware vehicle/sensor-kit layout.
 Built from source in `src/sensor_component/external/`:
 
 - **LiDAR** — `velodyne_vls` (`velodyne_driver`, `velodyne_pointcloud`, `velodyne_msgs`),
-  `autoware_ouster_ros` (`ouster_ros`, `ouster_sensor_msgs`) — the
-  [ehsan-javanmardi/autoware_ouster_ros](https://github.com/ehsan-javanmardi/autoware_ouster_ros)
-  fork, which publishes `autoware::point_types::PointXYZIRCAEDT` natively (`point_type: xyzircaedt`)
-  instead of a layout Autoware silently reduces to x/y/z,
   `rslidar_sdk` + `rslidar_msg`,
   `nebula` (`nebula_ros`, `nebula_decoders`, `nebula_hw_interfaces`, `nebula_common`, and message packages)
 - **GNSS / IMU** — `fixposition_driver` (`_lib`, `_ros2`, `_odometry_converter_ros2`),
@@ -80,10 +76,34 @@ Built from source in `src/sensor_component/external/`:
 - **Radar / ultrasonic** — `pe_ars408_ros` (Continental ARS408),
   `ultra_sonic_radar_driver`, `ultra_sonic_radar_detector`
 
-34 packages added and built, plus 3 shipped with an upstream `COLCON_IGNORE`
-(`velodyne`, `velodyne_laserscan`, `bag_to_pcap`).
+19 packages in total, of which 14 are built. Five carry a `COLCON_IGNORE`: `velodyne`,
+`velodyne_laserscan` and `bag_to_pcap` ship with one from upstream, and `rslidar_msg/{ros1,ros2}`
+were given one here (see [Local modifications](#5-local-modifications)).
 
-### 3. Replaced
+`nebula`, `sensor_component_description`, `sync_tooling_msgs`, `ros2_socketcan` and
+`transport_drivers` are **not** in this list: they come from `autoware.repos`, not from Pixkit.
+
+### 3. Added — Autoware compatible Ouster driver
+
+`src/sensor_component/external/autoware_ouster_ros/` (`ouster_ros`, `ouster_sensor_msgs`)
+
+This one is **not** part of the Pixkit extensions and is not the stock Ouster driver either. It is a
+standalone repository, [ehsan-javanmardi/autoware_ouster_ros](https://github.com/ehsan-javanmardi/autoware_ouster_ros),
+forked from [ouster-lidar/ouster-ros](https://github.com/ouster-lidar/ouster-ros) v0.13.9 and
+maintained separately so it can be used on other vehicles. The copy committed here is a plain
+directory, not a submodule, so the workspace builds without extra steps.
+
+What it adds is a `point_type: xyzircaedt` that publishes
+`autoware::point_types::PointXYZIRCAEDT` directly. Autoware validates an incoming cloud against
+that struct by field name, datatype **and byte offset**, and a cloud that does not match is not
+rejected but silently reduced to x/y/z, dropping intensity, channel and the per point timestamps,
+and with them distortion correction and the ring based outlier filters. No point type the stock
+driver offers matches that layout.
+
+See the driver's own [README](src/sensor_component/external/autoware_ouster_ros/README.md) for
+the field mapping, the `intensity_source` parameter and the Autoware preset parameter file.
+
+### 4. Replaced
 
 Nine packages were overwritten in place by the Pixkit versions (same paths, so no duplicates):
 
@@ -95,7 +115,7 @@ Nine packages were overwritten in place by the Pixkit versions (same paths, so n
 106 files total were overwritten, confined to `src/sensor_component/`. **No files in the core
 `autoware_launch` package, and no `autoware_core` / `autoware_universe` package, were modified.**
 
-### 4. Local modifications
+### 5. Local modifications
 
 - **`COLCON_IGNORE` added** to `src/sensor_component/external/rslidar_msg/{ros1,ros2}`.
   Upstream Pixkit ships `rslidar_msg` three times (root, `ros1/`, `ros2/`) all declaring the same
@@ -252,21 +272,21 @@ separately.
 > sudo ip link set can1 up type can bitrate 500000
 > ```
 
-See **[VEHICLE_CAN_AND_RUNTIME.md](VEHICLE_CAN_AND_RUNTIME.md)** for CAN bring-up and
+See **[docs/VEHICLE_CAN_AND_RUNTIME.md](docs/VEHICLE_CAN_AND_RUNTIME.md)** for CAN bring-up and
 verification, why RViz may show no lidar points (the concatenate component needs two or
 more lidars), how to view the single Ouster without localization, and the current list of
 known runtime issues.
 
 Sensor/network addressing and the host-level settings that make it work are in
-**[SETUP_STATE.md](SETUP_STATE.md)**; RTK corrections in
-**[RTK_ICHIMILL_SETUP.md](RTK_ICHIMILL_SETUP.md)**.
+**[docs/SETUP_STATE.md](docs/SETUP_STATE.md)**; RTK corrections in
+**[docs/RTK_ICHIMILL_SETUP.md](docs/RTK_ICHIMILL_SETUP.md)**.
 
 ## Provenance and rollback
 
 This tree was assembled by cloning `autowarefoundation/autoware` at tag **1.9.0** (commit
 `1071878`), importing `repositories/autoware.repos`, and copying the `tlab-wide/Pixkit_Autoware`
 extensions over the result. The 180 upstream files the Pixkit copy overwrote are listed in
-[`pixkit_merge_overwritten_files.txt`](pixkit_merge_overwritten_files.txt); their stock 1.9.0
+[`docs/pixkit_merge_overwritten_files.txt`](docs/pixkit_merge_overwritten_files.txt); their stock 1.9.0
 contents can be recovered from the revisions recorded in
 [`repositories/imported-revisions.repos`](repositories/imported-revisions.repos).
 
@@ -276,14 +296,29 @@ the exact commit every package came from, so any of them can be re-cloned and di
 committed here.
 
 The Pixkit extension repository's own README is kept as
-[`README.pixkit-extensions.md`](README.pixkit-extensions.md).
+[`docs/README.pixkit-extensions.md`](docs/README.pixkit-extensions.md).
 
-## Upstream documentation
+## Documentation
+
+Everything written for this vehicle lives in [`docs/`](docs/):
+
+| Document | What it covers |
+| -------- | -------------- |
+| [`docs/SETUP_STATE.md`](docs/SETUP_STATE.md) | Setup state and handover notes: what is configured, what is not, and where each subsystem stands. Read this first when resuming work. |
+| [`docs/VEHICLE_CAN_AND_RUNTIME.md`](docs/VEHICLE_CAN_AND_RUNTIME.md) | CAN bring-up and the runtime picture from a real launch: interfaces, topics, and what has to be running before autonomy engages. |
+| [`docs/RTK_ICHIMILL_SETUP.md`](docs/RTK_ICHIMILL_SETUP.md) | RTK corrections over SoftBank ichimill, both the `str2str` relay and the receiver's built-in NTRIP client. |
+| [`docs/pixkit_merge_overwritten_files.txt`](docs/pixkit_merge_overwritten_files.txt) | The 180 upstream files the Pixkit extension copy overwrote in this tree. |
+| [`docs/README.pixkit-extensions.md`](docs/README.pixkit-extensions.md) | The Pixkit extension repository's own README, kept as it was received. |
+| [`docs/README.upstream-autoware.md`](docs/README.upstream-autoware.md) | The upstream Autoware README, replaced at the root by this file. |
+
+The Ouster driver documents itself in
+[`src/sensor_component/external/autoware_ouster_ros/README.md`](src/sensor_component/external/autoware_ouster_ros/README.md).
+
+### Upstream
 
 - [Autoware documentation](https://autowarefoundation.github.io/autoware-documentation/main/)
 - [Autoware Foundation](https://www.autoware.org/)
 - [Pixkit extensions upstream](https://github.com/tlab-wide/Pixkit_Autoware)
-- Original upstream README: [`README.upstream-autoware.md`](README.upstream-autoware.md)
 
 ## License
 
