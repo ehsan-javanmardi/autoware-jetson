@@ -25,7 +25,7 @@ base_link:
 base_link2os_lidar_top:
   x: 0.00
   y: 0.00
-  z: 1.4
+  z: 1.8   # measured 2026-08-21; was 1.4, which put every scan 0.4 m low
   roll: 0.0
   pitch: 0.0
   yaw: 3.1075
@@ -46,7 +46,7 @@ os_lidar_top2os_lidar_rr:
 base_link2gnss:
   x: -0.9
   y: 0.0
-  z: 0.3
+  z: 0.9   # measured 2026-08-21; was 0.3, so GNSS poses sat 0.6 m high
   roll: 0.0
   pitch: 0.0
   yaw: 0.0
