@@ -206,7 +206,14 @@ void ReportConverter::timerCallback()
   slip_angle_pub_->publish(slip_angle_msg);
 
   // make control mode
+  // The guard above only warns when vehicle_work_sta_fb_ptr_ is missing, it does not return, so
+  // this pointer can still be null here. The work state frame comes in slower than the vital
+  // frames, which leaves a window at start up where everything else is present and this is not.
   control_mode_report_msg.stamp = current_time;
+  if (vehicle_work_sta_fb_ptr_ == nullptr) {
+    control_mode_report_msg.mode = autoware_vehicle_msgs::msg::ControlModeReport::NOT_READY;
+    control_mode_pub_->publish(control_mode_report_msg);
+  } else {
   switch (vehicle_work_sta_fb_ptr_->vcu_driving_mode_fb)
   {
   case static_cast<int8_t>(VCU_DRIVINGMODEFB_SELF_DRIVING):
@@ -218,11 +225,17 @@ void ReportConverter::timerCallback()
   case static_cast<int8_t>(VCU_DRIVINGMODEFB_REMOTE):
     control_mode_report_msg.mode = autoware_vehicle_msgs::msg::ControlModeReport::MANUAL;
     break;
+  case static_cast<int8_t>(VCU_DRIVINGMODEFB_MAN):
+    // Was missing from this switch, so driving the chassis by hand reported NOT_READY and
+    // Autoware refused to offer the transition into autonomous.
+    control_mode_report_msg.mode = autoware_vehicle_msgs::msg::ControlModeReport::MANUAL;
+    break;
   default:
     control_mode_report_msg.mode = autoware_vehicle_msgs::msg::ControlModeReport::NOT_READY;
     break;
   }
   control_mode_pub_->publish(control_mode_report_msg);
+  }
 
   // hazard lights status
   hazard_lights_report_msg.stamp = current_time;
@@ -232,6 +245,7 @@ void ReportConverter::timerCallback()
   }else{
     hazard_lights_report_msg.report = autoware_vehicle_msgs::msg::HazardLightsReport::DISABLE;
   }
+  hazard_lights_status_pub_->publish(hazard_lights_report_msg);
 
   // turn indicators, pix chassi feedbacks LEFT light and RIGHT light separately, if the hazard light blink, it will output ENABLE_LEFT as default
   turn_indicators_report_msg.stamp = current_time;

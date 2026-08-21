@@ -145,3 +145,130 @@ VLP16s (`192.168.1.201-204`) that are not present, and `host_ip` changed from th
 before `ros2 lifecycle set`, which failed with "Node not found" under load) replaced by
 `launch/activate_lifecycle_node.sh`, which waits for registration then
 configure → activate with retries.
+
+## Session 2026-08-21 — actuation map wiring and two `pix_hooke_driver` bugs
+
+Three problems were found while running with both CAN buses up. All three are fixed in the
+tree; only the last one still needs a road test.
+
+### 1. The calibrated accel/brake maps were never loaded
+
+`ros2 param get /raw_vehicle_cmd_converter csv_path_accel_map` reported the converter
+package's own default map, not the Pixkit one, even though
+`autoware_launch/config/vehicle/raw_vehicle_cmd_converter/raw_vehicle_cmd_converter.param.yaml`
+points at `pixkit_description/data/accel_map.csv`.
+
+Cause: `pixkit_launch/launch/vehicle_interface.launch.xml` included the converter launch
+file **bare**. `raw_vehicle_converter.launch.xml` declares
+
+```xml
+<arg name="config_file" default="$(find-pkg-share autoware_raw_vehicle_cmd_converter)/config/raw_vehicle_cmd_converter.param.yaml"/>
+```
+
+so with no `config_file` argument it silently loads its own defaults. The `autoware_launch`
+config was edited but never reached the node.
+
+Fix: pass `config_file` explicitly from `vehicle_interface.launch.xml`.
+
+Verify after any change to this path:
+
+```bash
+ros2 param get /raw_vehicle_cmd_converter csv_path_accel_map
+# must print .../install/pixkit_description/share/pixkit_description/data/accel_map.csv
+```
+
+Why it matters for the throttle complaint. The two maps disagree in the direction that
+explains the symptom — at standstill, for the same requested acceleration the Pixkit map
+asks for roughly twice the pedal:
+
+| requested accel at v=0 | default map pedal | Pixkit map pedal |
+| --- | --- | --- |
+| 0.3 m/s² | 0.000 | 0.135 |
+| 0.5 m/s² | 0.067 | 0.190 |
+| 1.0 m/s² | 0.173 | 0.321 |
+| 1.5 m/s² | 0.258 | 0.465 |
+
+With the default map the controller under-commands the pedal, the vehicle does not break
+static friction, the longitudinal PID integral winds up, and the pedal then ramps toward
+the `max_throttle: 0.4` clamp — which matches "the throttle is too high and it stops".
+Push the car by hand and static friction is already broken, so the loop closes and control
+works. That is the reported behaviour exactly.
+
+**Not yet validated on the road.** During an engage attempt, with the wheels clear and the
+e-stop in reach, watch:
+
+```bash
+ros2 topic echo /control/command/actuation_cmd
+ros2 topic echo /vehicle/status/velocity_status
+```
+
+### 2. `pix_hooke_driver_report_converter_node` segfaulted on start (exit -11)
+
+```
+[pix_hooke_driver_report_converter_node-6] WARN: vehicle work sta fb not received or timeout
+[ERROR] process has died [exit code -11]
+```
+
+`report_converter.cpp` treats `vehicle_work_sta_fb_ptr_` as non-vital: when it is null the
+timer callback only **warns** and carries on, then dereferences the same null pointer a few
+lines later to read `vcu_driving_mode_fb`. The work-state frame (`0x534`) arrives slower
+than the four vital frames, so there is a start-up window where everything else is present
+and this is not — a race that fires on roughly every cold start.
+
+Consequence: no `/vehicle/status/velocity_status`, no `/vehicle/status/control_mode`, so
+`is_autonomous_mode_available: false` and no AUTO button, no matter how good localization is.
+
+Fix: publish `NOT_READY` when the pointer is null instead of dereferencing it. The same
+callback also filled in `hazard_lights_report_msg` and never published it; that publish was
+added.
+
+### 3. Chassis manual mode reported `NOT_READY` to Autoware
+
+`VCU_DrivingModeFb` (frame `0x534`) is `{0: STANDBY, 1: SELF_DRIVING, 2: REMOTE, 3: MAN}`.
+The switch in `report_converter.cpp` handled 0, 1 and 2 and let 3 fall through to
+`default: NOT_READY`. The chassis sits in `MAN` (3) whenever it is not engaged, so Autoware
+saw `ControlModeReport::NOT_READY` and would not offer the transition into autonomous.
+
+Fix: map `VCU_DRIVINGMODEFB_MAN` to `ControlModeReport::MANUAL`.
+
+Decoding what you see:
+
+```bash
+ros2 topic echo /vehicle/status/control_mode --once   # 1 AUTONOMOUS 4 MANUAL 5 DISENGAGED 6 NOT_READY
+ros2 topic echo /pix_hooke/v2a_vehicleworkstafb --once | head -3
+```
+
+### State reached at the end of the session
+
+| Item | State |
+| --- | --- |
+| Both CAN buses | up, `/from_can_bus` ~825 Hz, all seven `v2a_*` report topics ~50 Hz |
+| Localization | `initialization_state: 3` (INITIALIZED), `map -> base_link` present |
+| Route | `/api/routing/state: 2` (SET) |
+| Accel/brake maps | Pixkit maps confirmed loaded in the node |
+| Vehicle status topics | publishing after the segfault fix |
+| Autonomous mode | not yet re-checked after the `MAN -> MANUAL` fix — **first thing to test next session** |
+
+Next session, after `colcon build --symlink-install --packages-select pix_hooke_driver pixkit_launch`
+and a fresh launch:
+
+```bash
+ros2 topic echo /vehicle/status/control_mode --once     # expect mode: 4
+ros2 topic echo /api/operation_mode/state --once        # expect is_autonomous_mode_available: true
+ros2 param get /raw_vehicle_cmd_converter csv_path_accel_map
+```
+
+### A note on stopping processes
+
+`pkill -f <pattern>` matches the shell running the command, because the pattern is part of
+that shell's own command line — it kills itself and orphans the target. The `[e]` bracket
+trick does not help when the command line also contains the literal name elsewhere. Match
+on the executable instead:
+
+```bash
+for d in /proc/[0-9]*; do
+  case "$(readlink "$d/exe" 2>/dev/null)" in
+    *report_converter_node) kill -9 "${d#/proc/}";;
+  esac
+done
+```

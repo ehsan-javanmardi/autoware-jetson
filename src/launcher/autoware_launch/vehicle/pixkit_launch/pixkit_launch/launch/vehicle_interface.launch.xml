@@ -6,6 +6,13 @@
   <include file="$(find-pkg-share ros2_socketcan)/launch/socket_can_bridge.launch.xml" />
   
   <include file="$(find-pkg-share ros2_socketcan)/launch/socket_can1_bridge.launch.xml" />
-  <include file="$(find-pkg-share autoware_raw_vehicle_cmd_converter)/launch/raw_vehicle_converter.launch.xml" />
+  <!-- config_file must be passed. Without it the converter loads its own package default,
+       which points at the generic accel and brake maps, and the maps measured on this vehicle
+       are ignored. That is not visible anywhere at runtime except by reading the node's
+       csv_path_accel_map parameter back. -->
+  <include file="$(find-pkg-share autoware_raw_vehicle_cmd_converter)/launch/raw_vehicle_converter.launch.xml">
+    <arg name="config_file"
+         value="$(find-pkg-share autoware_launch)/config/vehicle/raw_vehicle_cmd_converter/raw_vehicle_cmd_converter.param.yaml"/>
+  </include>
 
 </launch>
