@@ -23,7 +23,11 @@ base_link:
   #   yaw: -0.0364
     
 base_link2os_lidar_top:
-  x: 0.00
+  # Derived 2026-08-21 from the antenna geometry: the lidar sits midway between the two
+  # GNSS antennas, 1.25 m from each, and they are symmetric about the body, so it is at the
+  # longitudinal centre, (-0.32 + 2.22) / 2 measured from the rear axle. Was 0.00, which
+  # placed every scan most of a metre behind where it was taken.
+  x: 0.95
   y: 0.00
   z: 1.8   # measured 2026-08-21; was 1.4, which put every scan 0.4 m low
   roll: 0.0
@@ -44,7 +48,9 @@ os_lidar_top2os_lidar_rr:
   pitch: -0.002
   yaw: 0.013
 base_link2gnss:
-  x: -0.9
+  # The REAR antenna, which is the positioning one (GNSS1); the front antenna on GNSS2 only
+  # provides heading from the baseline and needs no frame. 1.25 m behind the lidar at 0.95.
+  x: -0.30
   y: 0.0
   z: 0.9   # measured 2026-08-21; was 0.3, so GNSS poses sat 0.6 m high
   roll: 0.0
