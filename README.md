@@ -252,6 +252,12 @@ sensor — [OS-1-128](docs/sensors/OUSTER_OS1_128.md), [OS-2-32](docs/sensors/OU
 [GNSS/INS](docs/sensors/CHC_CGI410.md), [camera](docs/sensors/CAMERA.md),
 [Velodyne](docs/sensors/VELODYNE_VLP16.md), [ultrasonic and radar](docs/sensors/ULTRASONIC_RADAR.md).
 
+## Vehicle
+
+`base_link` is the centre of the rear axle projected onto the ground; the vehicle is 2.54 m long
+and 1.465 m wide with a 1.9 m wheel base. See [`docs/VEHICLE.md`](docs/VEHICLE.md) for the full
+geometry, where each sensor sits relative to it, and the front/rear GNSS antenna split.
+
 ## Maps
 
 A point cloud map and a lanelet2 map are committed in [`autoware_map/`](autoware_map): Kashiwanoha
@@ -279,6 +285,37 @@ ros2 launch autoware_launch autoware.launch.xml \
 
 The map directory defaults to [`autoware_map/`](autoware_map); pass another path as the first
 argument to use a different map. See [Maps](#maps).
+
+### Making the output readable
+
+Autoware writes thousands of lines at startup and, by default, none of them are coloured. Colour is
+auto-detected and switched off whenever output is not a terminal, which is exactly what `ros2
+launch` does when it captures each node's stdout to prefix it with `[node_name-N]`. Force it on:
+
+```bash
+export RCUTILS_COLORIZED_OUTPUT=1          # WARN yellow, ERROR red
+export RCUTILS_CONSOLE_OUTPUT_FORMAT='[{severity}] [{name}]: {message}'
+```
+
+To keep it across GUI-launched runs, put it beside the DDS settings, which are session-wide for the
+same reason:
+
+```bash
+echo 'RCUTILS_COLORIZED_OUTPUT=1' >> ~/.config/environment.d/10-ros-dds.conf
+```
+
+The bring-up script passes `log_level:=debug`, which is the main reason the terminal is
+unreadable. Override it:
+
+```bash
+./autoware_velodyne_kashiwa.sh log_level:=warn
+```
+
+For a log file already captured, the escape codes are not in it, so colour on the way out:
+
+```bash
+grep --color=always -E "ERROR|WARN|$" run.log | less -R      # -R renders the escapes
+```
 
 ---
 
@@ -329,6 +366,7 @@ Everything written for this vehicle lives in [`docs/`](docs/):
 
 | Document | What it covers |
 | -------- | -------------- |
+| [`docs/VEHICLE.md`](docs/VEHICLE.md) | Where `base_link` is, the vehicle dimensions planning and control read, where each sensor sits relative to it, and the two GNSS antennas. |
 | [`docs/PARALLEL_VERSIONS.md`](docs/PARALLEL_VERSIONS.md) | Keeping the version that runs on the vehicle buildable while developing the next one, with a second working copy rather than by switching branches. |
 | [`docs/LAUNCH_CHAIN.md`](docs/LAUNCH_CHAIN.md) | How a launch gets from `autoware.launch.xml` to a point cloud: which file includes which, how `sensor_model` selects this vehicle's packages, where the namespaces come from, and how the shared pointcloud container is filled. |
 | [`docs/SENSORS.md`](docs/SENSORS.md) | Index of the sensors on this vehicle, the sensor LAN address map, and a page per sensor under [`docs/sensors/`](docs/sensors) covering its addressing, configuration files, topics and frames. |
