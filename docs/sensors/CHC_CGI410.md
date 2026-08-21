@@ -200,7 +200,8 @@ sudo nmcli con up "Wired connection 1"
 
 | symptom | meaning |
 | ------- | ------- |
-| `nmea_tcpclient_driver-NN process has died, exit code 255` | the driver could not open the TCP connection; the receiver is unreachable, not misconfigured |
+| `nmea_tcpclient_driver-NN process has died, exit code 255`, preceded by `Installing the transforms3d library by hand required` | a **missing Python dependency**, not a network problem. The driver exits before it ever opens a socket, so it looks identical to an unreachable receiver. `nmea_navsat_driver` imports `transforms3d` but only declared `tf_transformations`; the manifest here now declares `python3-transforms3d` so `rosdep install` covers it |
+| `nmea_tcpclient_driver-NN process has died, exit code 255` with no such message | the driver could not open the TCP connection; the receiver is unreachable |
 | `/api/localization/initialize: status code 3 'The GNSS pose has not arrived.'` | the **automatic** pose initializer has no GNSS fix. A manual 2D Pose Estimate in RViz still works, it does not need GNSS |
 | `status code 1 'The vehicle is not stopped.'` | unrelated to GNSS, see [OUSTER_OS2_32.md](OUSTER_OS2_32.md#running-the-whole-stack-on-a-bench) |
 

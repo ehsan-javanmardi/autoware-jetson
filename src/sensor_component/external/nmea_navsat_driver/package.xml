@@ -24,6 +24,10 @@
     <exec_depend>python3-numpy</exec_depend>
     <exec_depend>python3-serial</exec_depend>
     <exec_depend>tf_transformations</exec_depend>
+    <!-- tf_transformations is only a wrapper; the nodes import transforms3d directly and exit
+         255 with "Installing the transforms3d library by hand required" without it. Undeclared
+         upstream, so rosdep never installed it. -->
+    <exec_depend>python3-transforms3d</exec_depend>
 
     <test_depend>python3-pytest</test_depend>
 
