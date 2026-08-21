@@ -366,6 +366,9 @@ Everything written for this vehicle lives in [`docs/`](docs/):
 
 | Document | What it covers |
 | -------- | -------------- |
+| [`docs/components/LOCALIZATION.md`](docs/components/LOCALIZATION.md) | What estimates the pose: GNSS for initialization, NDT and gyro odometry for the running estimate, how GNSS is fused in, and what each initialization failure means. |
+| [`docs/components/PERCEPTION.md`](docs/components/PERCEPTION.md) | The detection stack, the point cloud contract it depends on, and what is still open on this vehicle. |
+| [`docs/components/PLANNING_CONTROL.md`](docs/components/PLANNING_CONTROL.md) | Route to trajectory to CAN, what must be true before anything moves, and how to run with no possibility of movement. |
 | [`docs/VEHICLE.md`](docs/VEHICLE.md) | Where `base_link` is, the vehicle dimensions planning and control read, where each sensor sits relative to it, and the two GNSS antennas. |
 | [`docs/PARALLEL_VERSIONS.md`](docs/PARALLEL_VERSIONS.md) | Keeping the version that runs on the vehicle buildable while developing the next one, with a second working copy rather than by switching branches. |
 | [`docs/LAUNCH_CHAIN.md`](docs/LAUNCH_CHAIN.md) | How a launch gets from `autoware.launch.xml` to a point cloud: which file includes which, how `sensor_model` selects this vehicle's packages, where the namespaces come from, and how the shared pointcloud container is filled. |
