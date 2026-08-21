@@ -4,5 +4,5 @@
 # Without this file Autoware falls back to deriving projection from
 # lanelet2_map.osm, which logs a DEPRECATED warning.
 projector_type: MGRS
-vertical_datum: WGS84
+vertical_datum: EGM2008
 mgrs_grid: 54SVE
