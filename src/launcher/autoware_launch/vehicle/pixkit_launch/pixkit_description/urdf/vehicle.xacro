@@ -7,7 +7,15 @@
   <!-- vehicle body -->
   <link name="base_link">
     <visual>
-      <origin xyz="-0.25 0.0 0.1" rpy="0 0 ${pi/2.0}"/>
+      <!-- base_link is the rear axle on the ground, so the body mesh, centred on its own
+           origin, belongs at the vehicle longitudinal centre, 0.95 m ahead of it, from
+           (-rear_overhang + wheel_base + front_overhang) / 2. It was drawn at -0.25, over a
+           metre too far back, which left base_link and every pose marker drawn at it sitting
+           mid-body. Cosmetic, but it is what one judges by eye. To check, the rear wheels
+           should straddle base_link and the front wheels sit 1.9 m ahead.
+           Avoid a colon followed by a space anywhere in this file. The generated URDF is
+           passed as a parameter and parsed with YAML rules, and one breaks the whole launch. -->
+      <origin xyz="0.95 0.0 0.1" rpy="0 0 ${pi/2.0}"/>
       <geometry>
         <mesh filename="package://pixkit_description/mesh/hooke.dae" scale="0.001 0.001 0.001"/>
       </geometry>

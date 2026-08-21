@@ -84,16 +84,20 @@ sensor_kit_base_link:
     pitch: 0.71
     yaw: -1.580
   gnss_link:
-    x: -0.9
+    # THIS is the frame gnss_poser uses (gnss_frame: gnss_link), not base_link2gnss in
+    # sensors_calibration.yaml, which builds an unused "gnss" frame. Values are relative to
+    # sensor_kit_base_link at z 1.4, so base_link -> gnss_link = (-0.30, 0, 0.9): the rear
+    # antenna, 0.30 m behind the rear axle and 0.90 m above the ground, measured 2026-08-21.
+    x: -0.30
     y: 0.0
-    z: -1.1
+    z: -0.5
     roll: 0.0
     pitch: 0.0
     yaw: 0.0
   gps:
-    x: -0.9
+    x: -0.30
     y: 0.0
-    z: -1.1
+    z: -0.5
     roll: 0.0
     pitch: 0.0
     yaw: 0.0

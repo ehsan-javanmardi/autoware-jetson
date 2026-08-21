@@ -33,7 +33,14 @@ def generate_launch_description():
         parameters=[{
             "ip": "192.168.1.110",
             "port": 9904,
-            "buffer_size": 4096
+            "buffer_size": 4096,
+            # The driver defaults to stamping the fix with frame_id "gps", which no URDF in
+            # this workspace creates. gnss_poser then fails every lookupTransform with
+            # '"gps" passed to lookupTransform argument target_frame does not exist' and
+            # skips the antenna lever arm entirely, so the pose it publishes is the antenna
+            # position rather than base_link, and correcting the antenna offset changes
+            # nothing. gnss_link is the frame the sensor kit description actually builds.
+            "frame_id": "gnss_link",
         }],
         arguments=['--ros-args', '--log-level', logger]
         )

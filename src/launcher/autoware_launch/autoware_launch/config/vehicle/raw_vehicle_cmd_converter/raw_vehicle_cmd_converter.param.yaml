@@ -13,8 +13,15 @@
 
 /**:
   ros__parameters:
-    csv_path_accel_map: $(find-pkg-share autoware_raw_vehicle_cmd_converter)/data/default/accel_map.csv
-    csv_path_brake_map: $(find-pkg-share autoware_raw_vehicle_cmd_converter)/data/default/brake_map.csv
+    # Measured on this vehicle with autoware_accel_brake_map_calibrator and recovered from the
+    # original Pixkit workspace, where they had been written over the upstream defaults in
+    # place. The generic default map describes a torque converter automatic that creeps: it
+    # claims +0.3 m/s2 at zero throttle and zero speed. A Pixkit is direct drive and produces
+    # nothing until commanded, so from a standstill the controller under commands, the speed
+    # error integrates, and the throttle spikes; once rolling the map is close enough and
+    # control behaves. The calibrated map starts at -0.005 m/s2 for 0.001 throttle instead.
+    csv_path_accel_map: $(find-pkg-share pixkit_description)/data/accel_map.csv
+    csv_path_brake_map: $(find-pkg-share pixkit_description)/data/brake_map.csv
     csv_path_steer_map: $(find-pkg-share autoware_raw_vehicle_cmd_converter)/data/default/steer_map.csv
     convert_accel_cmd: true
     convert_brake_cmd: true
