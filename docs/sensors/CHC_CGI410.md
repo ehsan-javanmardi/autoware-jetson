@@ -34,16 +34,101 @@ the Ouster's built-in IMU (`/sensing/lidar/top/ouster/imu`) and the Fixposition
 Edit `nmea_tcpclient_driver.yaml`. That file is the only place the receiver's address appears, and
 it is a plain node parameter file, so the change takes effect on the next launch.
 
-## RTK
+## RTK corrections
 
-Corrections come from SoftBank ichimill over NTRIP. The receiver runs the NTRIP client itself
-rather than the host relaying with `str2str`. Full setup, including the caster address, the mount
-point and the routing that lets a receiver on a gateway-less LAN reach the internet, is in
-[`RTK_ICHIMILL_SETUP.md`](../RTK_ICHIMILL_SETUP.md).
+Corrections come from SoftBank ichimill over NTRIP, at
+`ntrip.ales-corp.co.jp:2101`, mount point `RTCM32M7S`. The password is not in this repository; see
+`Ntrip_notice_*.xlsx`, account #4.
 
-The routing part is easy to miss: the sensor LAN has no gateway, so `pixkit-sensor-nat.service`
-masquerades `192.168.1.0/24` out of whichever interface holds the default route. Without it the
-receiver cannot reach the caster and silently stays in single-point fix.
+The receiver has no route to the internet of its own. The sensor LAN deliberately has no gateway,
+so **the host is the only way out**, and there are two ways to arrange that. Pick one; they are
+alternatives, not steps.
+
+### Option A — the receiver runs the NTRIP client
+
+The receiver dials the caster itself, and the host forwards for it.
+
+**On the receiver:**
+
+| field | value |
+| ----- | ----- |
+| IP | `192.168.1.110` |
+| Netmask | `255.255.255.0` |
+| Gateway | `192.168.1.100` ← the host's sensor LAN address |
+| DNS | `8.8.8.8` |
+| NTRIP server | `ntrip.ales-corp.co.jp` port `2101` |
+| Mount point | `RTCM32M7S` |
+
+**On the host**, already in place and needing nothing:
+
+- `net.ipv4.ip_forward = 1`
+- `pixkit-sensor-nat.service`, which masquerades `192.168.1.0/24` out of whichever interface holds
+  the default route. It is written as `! -o enp3s0`, so it follows the default route wherever it
+  goes: cellular today, wifi tomorrow, with no edit.
+
+Traffic path: receiver → host `192.168.1.100` → NAT → whatever provides internet → caster.
+
+Three things go wrong quietly with this option:
+
+- **The gateway is a real dependency.** `192.168.1.102` is the address the host used to have. A
+  receiver still pointing there gets a normal single-point fix and never a correction, with no
+  error anywhere.
+- **DNS must be a public resolver.** Do not use `192.168.1.100`: the host's `systemd-resolved`
+  listens on `127.0.0.53` only and does not answer queries from the network. Alternatively skip DNS
+  entirely by entering the caster as `52.199.90.201`, which is what the hostname resolved to on
+  2026-08-21, at the cost of breaking if that address ever changes.
+- **The default route can move under you.** If the internet connection drops, the host may fall
+  back to another route that has no internet, and corrections stop silently.
+
+### Option B — `str2str` on the host relays to the receiver
+
+The host pulls the correction stream and re-serves it on the local network. The receiver never
+leaves its own subnet, so it needs **no gateway, no DNS and no NAT**.
+
+**On the host** (`str2str` is installed at `/usr/local/bin/str2str`):
+
+```bash
+str2str -in "ntrip://<user>:<password>@ntrip.ales-corp.co.jp:2101/RTCM32M7S" \
+        -out tcpsvr://:2102
+```
+
+**On the receiver:**
+
+| field | value |
+| ----- | ----- |
+| IP | `192.168.1.110`, netmask `255.255.255.0` |
+| Gateway | not needed |
+| DNS | not needed |
+| Protocol | **TCP client** |
+| Server | `192.168.1.100` port `2102` |
+
+This is the more robust of the two while the network is still being sorted out. Every uncertain
+part — the receiver's routing, its DNS, the NAT path, the stability of the uplink — moves to the
+host, where the correction stream is visible and reconnects are yours to see. The cost is a process
+someone has to start, and a password on a command line.
+
+### Using a cellular uplink
+
+Both options work over a USB-tethered modem; nothing needs configuring for it. The host picks the
+interface with the lowest metric default route, and the NAT rule follows it.
+
+Verified working on 2026-08-21 with a Kyocera tethered on `enx5666e608234b` (`192.168.42.24/24`,
+gateway `192.168.42.129`, metric 100):
+
+```bash
+ping 8.8.8.8                                   # 52 ms, cellular latency
+resolvectl query ntrip.ales-corp.co.jp         # 52.199.90.201
+bash -c 'exec 3<>/dev/tcp/52.199.90.201/2101'  # port open
+```
+
+Note that the caster does **not** answer ICMP: pinging `52.199.90.201` fails even when the service
+is perfectly reachable. Test the TCP port, not the ping.
+
+> [!WARNING]
+> While configuring the receiver over its own WiFi, the host is joined to `192.168.200.0/24` and
+> takes DNS servers from the receiver, which has no internet behind it. Name resolution then fails
+> on the host for as long as you stay joined, which looks exactly like a broken uplink. Leave that
+> network when finished.
 
 ## Reaching the receiver's own configuration UI
 
