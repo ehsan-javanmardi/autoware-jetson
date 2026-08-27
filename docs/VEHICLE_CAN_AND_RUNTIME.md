@@ -329,7 +329,7 @@ answers (vehicle powered down), it warns on stderr and falls back to `can0`/`can
 Overriding is still available when you want to force it:
 
 ```bash
-./autoware_velodyne_kashiwa.sh chassis_can_interface:=can1 aux_can_interface:=can0
+./autoware_kashiwa.sh chassis_can_interface:=can1 aux_can_interface:=can0
 ```
 
 Confirm what was chosen:

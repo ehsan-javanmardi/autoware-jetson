@@ -13,7 +13,7 @@ to `~/workspace/racing_kart_v2x` and built as an overlay on this one. Nothing in
 
 ```bash
 ./autoware_kashiwa_v2x.sh                             # the wrapper that sets it
-./autoware_velodyne_kashiwa.sh use_v2x_objects:=true  # or by hand
+./autoware_kashiwa_v2x.sh  # or by hand
 ```
 
 **Off by default.** Nothing in a stock Autoware publishes the topic it subscribes to, so

@@ -209,7 +209,7 @@ manual step in Chrome or needs a Bash permission rule.
 ### 4. Run
 
 ```bash
-./autoware_velodyne_kashiwa.sh /path/to/map
+./autoware_kashiwa.sh /path/to/map
 ```
 
 No map is present on this machine yet (`~/autoware_map` does not exist).

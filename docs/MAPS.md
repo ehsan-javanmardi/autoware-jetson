@@ -13,7 +13,7 @@ scans against, and a lanelet2 map describing the road network. Both live in
 ### Kashiwanoha
 
 Kashiwanoha Campus, Kashiwa, Chiba. This is the map the
-[`autoware_velodyne_kashiwa.sh`](../autoware_velodyne_kashiwa.sh) script loads by default.
+[`autoware_kashiwa.sh`](../autoware_kashiwa.sh) script loads by default.
 
 | File | What it is |
 | ---- | ---------- |
@@ -33,7 +33,7 @@ there:
 ```bash
 ./autoware_kashiwa_os1_128.sh                   # autoware_map/, next to the script
 ./autoware_kashiwa_os1_128.sh /path/to/map      # somewhere else
-AUTOWARE_MAP_PATH=/path/to/map ./autoware_velodyne_kashiwa.sh
+AUTOWARE_MAP_PATH=/path/to/map ./autoware_kashiwa.sh
 ```
 
 Launching Autoware directly takes the same directory as `map_path`:

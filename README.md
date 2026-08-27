@@ -136,7 +136,7 @@ Nine packages were overwritten in place by the Pixkit versions (same paths, so n
   `autoware_sensing_msgs`, `tf2`, `tf2_eigen` and `tf2_ros`, none of which were declared in
   `package.xml`. colcon only exposes declared dependencies to a package's build, so it configured
   successfully only while a Debian copy of `autoware_sensing_msgs` happened to be installed.
-- **`autoware_velodyne_kashiwa.sh` rewritten.** The upstream copy hardcoded
+- **`autoware_kashiwa.sh` rewritten.** The upstream copy hardcoded
   `/home/autoware/pixkit_autoware_0.45.1/...`. It now resolves the workspace from its own location,
   accepts the map path as an argument or `$AUTOWARE_MAP_PATH`, and fails with a clear message if the
   workspace is unbuilt or the map is missing.
@@ -244,7 +244,7 @@ USB camera for traffic lights. The four VLP-16s of the stock Pixkit configuratio
 Which lidars are launched is chosen with one argument rather than by editing files:
 
 ```bash
-./autoware_velodyne_kashiwa.sh autoware_map lidar_profile:=os2_32   # os1_128 | os2_32 | velodyne
+./autoware_kashiwa.sh autoware_map lidar_profile:=os2_32   # os1_128 | os2_32 | velodyne
 ```
 
 See [`docs/SENSORS.md`](docs/SENSORS.md) for the address map, the profile mechanism and a page per
@@ -275,7 +275,7 @@ directory as its first argument, and forwards anything containing `:=` to `ros2 
 | ------ | -------------- |
 | [`autoware_kashiwa_os1_128.sh`](autoware_kashiwa_os1_128.sh) | Autoware with the Ouster OS-1-128 as the only lidar. The everyday one. |
 | [`autoware_kashiwa_v2x.sh`](autoware_kashiwa_v2x.sh) | The same, plus `use_v2x_objects:=true` so vehicles reported over V2X reach the tracker. Needs the [racing_kart_v2x](https://github.com/ehsan-javanmardi/racing_kart_v2x) stack running alongside — see [`docs/V2X.md`](docs/V2X.md). |
-| [`autoware_velodyne_kashiwa.sh`](autoware_velodyne_kashiwa.sh) | The underlying launcher the other two wrap. Use it directly for any other combination, for example `lidar_profile:=os2_32` or `pose_source:=gnss`. |
+| [`autoware_kashiwa.sh`](autoware_kashiwa.sh) | The general purpose launcher, with the launch defaults. Use it for any other combination, for example `lidar_profile:=os2_32` or `pose_source:=gnss`. |
 
 ```bash
 ./autoware_kashiwa_os1_128.sh                       # autoware_map/, OS-1-128
@@ -285,11 +285,12 @@ directory as its first argument, and forwards anything containing `:=` to `ros2 
 ```
 
 > [!NOTE]
-> `autoware_velodyne_kashiwa.sh` is named after hardware this vehicle no longer carries.
-> It launches the Ouster, not a Velodyne. The name is kept because it is referenced from
-> several documents; the two `autoware_kashiwa_*` scripts are the ones to reach for.
+> These replace `autoware_velodyne_kashiwa.sh`, which was named after a lidar this vehicle
+> does not carry. Each script is self-contained rather than wrapping the others, so editing
+> one leaves the rest alone — at the cost of the map discovery and DDS setup being repeated
+> in all three.
 
-Any of them is equivalent to:
+Each is equivalent to:
 
 ```bash
 source install/setup.bash
@@ -327,7 +328,7 @@ The bring-up script passes `log_level:=debug`, which is the main reason the term
 unreadable. Override it:
 
 ```bash
-./autoware_velodyne_kashiwa.sh log_level:=warn
+./autoware_kashiwa.sh log_level:=warn
 ```
 
 For a log file already captured, the escape codes are not in it, so colour on the way out:

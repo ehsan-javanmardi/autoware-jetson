@@ -81,7 +81,7 @@ them.
 ## Running
 
 ```bash
-./autoware_velodyne_kashiwa.sh pose_source:=gnss
+./autoware_kashiwa.sh pose_source:=gnss
 ```
 
 Confirm it took:

@@ -45,8 +45,8 @@ Or through the script, which forwards any `arg:=value` to the launch and default
 directory to `autoware_map/`:
 
 ```bash
-./autoware_velodyne_kashiwa.sh lidar_profile:=os2_32
-./autoware_velodyne_kashiwa.sh /other/map lidar_profile:=os2_32   # different map
+./autoware_kashiwa.sh lidar_profile:=os2_32
+./autoware_kashiwa.sh /other/map lidar_profile:=os2_32   # different map
 ```
 
 A different address for one run:
@@ -181,7 +181,7 @@ indoors and most beams had no return; unorganized mode drops those rather than e
 Two things have to be given, and neither announces itself:
 
 ```bash
-./autoware_velodyne_kashiwa.sh lidar_profile:=os2_32 system_run_mode:=logging_simulation
+./autoware_kashiwa.sh lidar_profile:=os2_32 system_run_mode:=logging_simulation
 ```
 
 `system_run_mode:=logging_simulation` disables the pose initializer's stop check. That check asks
