@@ -3,16 +3,39 @@
   <arg name="vehicle_id" default="$(env VEHICLE_ID default)"/>
   <include file="$(find-pkg-share pix_hooke_driver)/launch/pix_hooke_driver.launch.xml" />
   <include file="$(find-pkg-share pix_hooke_driver)/launch/pix_autoware_interface.launch.xml" />
-  <include file="$(find-pkg-share ros2_socketcan)/launch/socket_can_bridge.launch.xml" />
-  
-  <include file="$(find-pkg-share ros2_socketcan)/launch/socket_can1_bridge.launch.xml" />
+  <!-- Which SocketCAN interface the Pixkit chassis is on. The whole pix_hooke_driver chain
+       reads /from_can_bus and writes /to_can_bus, which is the FIRST bridge only; the second
+       bridge has no subscribers and is here to keep the second adapter claimed.
+
+       The two PCAN-USB FD adapters are indistinguishable to udev (same vendor, product and
+       ID_SERIAL, no unique serial), so can0/can1 are assigned in USB enumeration order and can
+       swap between boots. When they swap, every v2a_* report topic goes silent, the socket_can
+       receiver logs "CAN Receive Timeout", and nothing downstream of the vehicle interface
+       works. Check which one actually carries the chassis before blaming the driver:
+
+         candump -n 200 can0 | awk '{print $2}' | sort -u   # chassis shows 530 531 532 539 542
+         candump -n 200 can1 | awk '{print $2}' | sort -u
+
+       and if it is the other one, launch with chassis_can_interface:=can1 aux_can_interface:=can0
+       or install the udev rule in docs/VEHICLE_CAN_AND_RUNTIME.md to pin the names. -->
+  <arg name="chassis_can_interface" default="can0"/>
+  <arg name="aux_can_interface" default="can1"/>
+
+  <include file="$(find-pkg-share ros2_socketcan)/launch/socket_can_bridge.launch.xml">
+    <arg name="interface" value="$(var chassis_can_interface)"/>
+  </include>
+
+  <include file="$(find-pkg-share ros2_socketcan)/launch/socket_can1_bridge.launch.xml">
+    <arg name="interface" value="$(var aux_can_interface)"/>
+  </include>
   <!-- config_file must be passed. Without it the converter loads its own package default,
        which points at the generic accel and brake maps, and the maps measured on this vehicle
        are ignored. That is not visible anywhere at runtime except by reading the node's
        csv_path_accel_map parameter back. -->
+  <arg name="raw_vehicle_cmd_converter_param_path"
+       default="$(find-pkg-share autoware_launch)/config/vehicle/raw_vehicle_cmd_converter/raw_vehicle_cmd_converter.param.yaml"/>
   <include file="$(find-pkg-share autoware_raw_vehicle_cmd_converter)/launch/raw_vehicle_converter.launch.xml">
-    <arg name="config_file"
-         value="$(find-pkg-share autoware_launch)/config/vehicle/raw_vehicle_cmd_converter/raw_vehicle_cmd_converter.param.yaml"/>
+    <arg name="config_file" value="$(var raw_vehicle_cmd_converter_param_path)"/>
   </include>
 
 </launch>

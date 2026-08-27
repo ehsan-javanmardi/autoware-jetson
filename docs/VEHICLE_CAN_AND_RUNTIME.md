@@ -272,3 +272,55 @@ for d in /proc/[0-9]*; do
   esac
 done
 ```
+
+## The two PCAN adapters swap names between boots
+
+Symptom: every `/pix_hooke/v2a_*` topic silent, no `/vehicle/status/velocity_status`, and
+
+```
+[socket_can_receiver]: Error receiving CAN message: can0 - CAN Receive Timeout
+[pix_hooke_driver_report_node]: drive stat fb report timeout = 95350 ms
+```
+
+while `candump can0` and `candump can1` both clearly show traffic.
+
+Cause: the two PEAK PCAN-USB FD adapters are indistinguishable to udev — same vendor `0c72`,
+same product `0012`, same `ID_SERIAL` (`PEAK-System_Technik_GmbH_PCAN-USB_FD`), and **no
+unique serial exposed in sysfs**. `can0` and `can1` are therefore handed out in USB
+enumeration order, which is a race and can come out either way after a reboot or a replug.
+
+Only the *first* bridge matters: the whole `pix_hooke_driver` chain reads `/from_can_bus` and
+writes `/to_can_bus`, both belonging to `socket_can_bridge.launch.xml`. The second bridge
+publishes `/from_can1_bus`, which has **zero subscribers** — it only keeps the other adapter
+claimed. So when the order flips, the driver is listening to the wrong bus and everything
+downstream of the vehicle interface stops.
+
+### Identify which interface has the chassis
+
+```bash
+for i in can0 can1; do echo "== $i"; timeout 3 candump -n 2000 $i | awk '{print $2}' | sort -u | tr '\n' ' '; echo; done
+```
+
+The chassis bus carries `530 531 532 536 537 539 542` (and `507 509 511`). The other bus
+carries only CANopen-looking traffic — `701` heartbeats plus `600`/`201`.
+
+### Point the launch at the right one
+
+`chassis_can_interface` and `aux_can_interface` are top level arguments of
+`autoware.launch.xml`, plumbed through `tier4_vehicle_launch/vehicle.launch.xml` into
+`pixkit_launch/vehicle_interface.launch.xml`:
+
+```bash
+./autoware_velodyne_kashiwa.sh chassis_can_interface:=can1 aux_can_interface:=can0
+```
+
+Defaults are `can0` / `can1`, so nothing is needed when the order comes out the usual way.
+
+### Making it deterministic
+
+Since the adapters carry no distinguishing identity, the only stable discriminator is the USB
+port they are plugged into (`udevadm info -q property -p /sys/class/net/can0 | grep ID_PATH`).
+A udev rule keyed on `KERNELS=="1-4"` etc. will pin the names as long as the cables stay in
+the same physical sockets. Renaming straight to `can0`/`can1` can collide with the name the
+kernel already gave the other adapter, so rename to distinct names and pass those as the
+launch arguments above.

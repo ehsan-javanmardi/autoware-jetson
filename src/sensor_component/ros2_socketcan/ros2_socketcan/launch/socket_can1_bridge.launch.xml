@@ -1,6 +1,6 @@
 <launch>
 
-  <let name="interface" value="can1" />
+  <arg name="interface" default="can1" />
   <let name="receiver_interval_sec" value="0.01" />
   <let name="sender_timeout_sec" value="0.01" />
   <!-- can1 -->
