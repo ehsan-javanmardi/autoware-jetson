@@ -304,23 +304,37 @@ for i in can0 can1; do echo "== $i"; timeout 3 candump -n 2000 $i | awk '{print 
 The chassis bus carries `530 531 532 536 537 539 542` (and `507 509 511`). The other bus
 carries only CANopen-looking traffic — `701` heartbeats plus `600`/`201`.
 
-### Point the launch at the right one
+### This is handled automatically
 
 `chassis_can_interface` and `aux_can_interface` are top level arguments of
 `autoware.launch.xml`, plumbed through `tier4_vehicle_launch/vehicle.launch.xml` into
-`pixkit_launch/vehicle_interface.launch.xml`:
+`pixkit_launch/vehicle_interface.launch.xml`. Both default to `auto`, which runs
+
+    pixkit_launch/scripts/detect_chassis_can.py --role {chassis,aux}
+
+during launch argument evaluation. It opens a raw CAN socket on every `canN` interface that is
+up, listens ~0.4 s each, and picks whichever one delivers the VCU feedback frames. Nothing has
+to be passed, and the answer is right whichever order the adapters enumerated in.
+
+A udev rule was considered and rejected: the adapters carry no distinguishing identity, so the
+only thing a rule could key on is the USB port path (`udevadm info -q property -p
+/sys/class/net/can0 | grep ID_PATH`), which pins the names only as long as nobody moves a
+cable. Renaming straight to `can0`/`can1` also collides with the name the kernel already gave
+the other adapter. Listening to the bus identifies it by what it actually carries, which is
+the property we care about.
+
+The script never fails the launch. If fewer than two `canN` interfaces are up, or no bus
+answers (vehicle powered down), it warns on stderr and falls back to `can0`/`can1`.
+
+Overriding is still available when you want to force it:
 
 ```bash
 ./autoware_velodyne_kashiwa.sh chassis_can_interface:=can1 aux_can_interface:=can0
 ```
 
-Defaults are `can0` / `can1`, so nothing is needed when the order comes out the usual way.
+Confirm what was chosen:
 
-### Making it deterministic
-
-Since the adapters carry no distinguishing identity, the only stable discriminator is the USB
-port they are plugged into (`udevadm info -q property -p /sys/class/net/can0 | grep ID_PATH`).
-A udev rule keyed on `KERNELS=="1-4"` etc. will pin the names as long as the cables stay in
-the same physical sockets. Renaming straight to `can0`/`can1` can collide with the name the
-kernel already gave the other adapter, so rename to distinct names and pass those as the
-launch arguments above.
+```bash
+ros2 param get /socket_can_receiver interface    # the chassis bridge
+ros2 param get /socket_can1_receiver interface   # the unused one
+```

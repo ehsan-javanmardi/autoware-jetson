@@ -8,8 +8,8 @@
   <arg name="initial_engage_state" default="false" description="/vehicle/engage state after starting Autoware"/>
   <arg name="config_dir" default="$(find-pkg-share $(var sensor_model)_description)/config" description="path to dir where sensors_calibration.yaml, etc. are located"/>
   <arg name="raw_vehicle_cmd_converter_param_path" default="$(find-pkg-share autoware_raw_vehicle_cmd_converter)/config/raw_vehicle_cmd_converter.param.yaml"/>
-  <arg name="chassis_can_interface" default="can0" description="SocketCAN interface the chassis is on"/>
-  <arg name="aux_can_interface" default="can1" description="the other SocketCAN interface"/>
+  <arg name="chassis_can_interface" default="auto" description="SocketCAN interface the chassis is on, or auto to detect"/>
+  <arg name="aux_can_interface" default="auto" description="the other SocketCAN interface, or auto to detect"/>
 
   <let name="vehicle_launch_pkg" value="$(find-pkg-share $(var vehicle_model)_launch)"/>
 

@@ -9,24 +9,27 @@
 
        The two PCAN-USB FD adapters are indistinguishable to udev (same vendor, product and
        ID_SERIAL, no unique serial), so can0/can1 are assigned in USB enumeration order and can
-       swap between boots. When they swap, every v2a_* report topic goes silent, the socket_can
-       receiver logs "CAN Receive Timeout", and nothing downstream of the vehicle interface
-       works. Check which one actually carries the chassis before blaming the driver:
+       swap between boots. "auto" listens on each bus for the VCU feedback frames and picks the
+       one that answers, which is the only identification that does not depend on the order the
+       kernel happened to enumerate them in. Pass an interface name to override. -->
+  <arg name="chassis_can_interface" default="auto"/>
+  <arg name="aux_can_interface" default="auto"/>
 
-         candump -n 200 can0 | awk '{print $2}' | sort -u   # chassis shows 530 531 532 539 542
-         candump -n 200 can1 | awk '{print $2}' | sort -u
-
-       and if it is the other one, launch with chassis_can_interface:=can1 aux_can_interface:=can0
-       or install the udev rule in docs/VEHICLE_CAN_AND_RUNTIME.md to pin the names. -->
-  <arg name="chassis_can_interface" default="can0"/>
-  <arg name="aux_can_interface" default="can1"/>
+  <let name="detected_chassis_can"
+       value="$(command '$(find-pkg-share pixkit_launch)/scripts/detect_chassis_can.py --role chassis' 'warn')"/>
+  <let name="detected_aux_can"
+       value="$(command '$(find-pkg-share pixkit_launch)/scripts/detect_chassis_can.py --role aux' 'warn')"/>
+  <let name="chassis_can"
+       value="$(eval &quot;'$(var detected_chassis_can)' if '$(var chassis_can_interface)' == 'auto' else '$(var chassis_can_interface)'&quot;)"/>
+  <let name="aux_can"
+       value="$(eval &quot;'$(var detected_aux_can)' if '$(var aux_can_interface)' == 'auto' else '$(var aux_can_interface)'&quot;)"/>
 
   <include file="$(find-pkg-share ros2_socketcan)/launch/socket_can_bridge.launch.xml">
-    <arg name="interface" value="$(var chassis_can_interface)"/>
+    <arg name="interface" value="$(var chassis_can)"/>
   </include>
 
   <include file="$(find-pkg-share ros2_socketcan)/launch/socket_can1_bridge.launch.xml">
-    <arg name="interface" value="$(var aux_can_interface)"/>
+    <arg name="interface" value="$(var aux_can)"/>
   </include>
   <!-- config_file must be passed. Without it the converter loads its own package default,
        which points at the generic accel and brake maps, and the maps measured on this vehicle
