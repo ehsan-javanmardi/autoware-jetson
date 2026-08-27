@@ -373,6 +373,7 @@ Everything written for this vehicle lives in [`docs/`](docs/):
 | [`docs/PARALLEL_VERSIONS.md`](docs/PARALLEL_VERSIONS.md) | Keeping the version that runs on the vehicle buildable while developing the next one, with a second working copy rather than by switching branches. |
 | [`docs/LAUNCH_CHAIN.md`](docs/LAUNCH_CHAIN.md) | How a launch gets from `autoware.launch.xml` to a point cloud: which file includes which, how `sensor_model` selects this vehicle's packages, where the namespaces come from, and how the shared pointcloud container is filled. |
 | [`docs/SENSORS.md`](docs/SENSORS.md) | Index of the sensors on this vehicle, the sensor LAN address map, and a page per sensor under [`docs/sensors/`](docs/sensors) covering its addressing, configuration files, topics and frames. |
+| [`docs/V2X.md`](docs/V2X.md) | Accepting vehicles reported over V2X as detected objects: the `use_v2x_objects` flag, why they need a topic of their own, and how to see them. The V2X stack itself is a separate workspace. |
 | [`docs/MAPS.md`](docs/MAPS.md) | The maps in `autoware_map/`, what each file is for, and what to check before adding another one. |
 | [`docs/SETUP_STATE.md`](docs/SETUP_STATE.md) | Setup state and handover notes: what is configured, what is not, and where each subsystem stands. Read this first when resuming work. |
 | [`docs/VEHICLE_CAN_AND_RUNTIME.md`](docs/VEHICLE_CAN_AND_RUNTIME.md) | CAN bring-up and the runtime picture from a real launch: interfaces, topics, and what has to be running before autonomy engages. |

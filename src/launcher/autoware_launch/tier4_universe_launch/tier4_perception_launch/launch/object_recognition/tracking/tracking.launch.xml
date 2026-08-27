@@ -49,7 +49,7 @@
   <arg name="input/radar/objects" default="/perception/object_recognition/detection/radar/objects"/>
   <arg name="input/radar/tracked_objects" default="/sensing/radar/tracked_objects"/>
   <!-- Cooperatively reported vehicles (V2X). Off by default; nothing in a stock
-       Autoware publishes this topic. See cart_v2x/README.md. -->
+       Autoware publishes this topic. See docs/V2X.md. -->
   <arg name="use_v2x_objects" default="false"/>
   <arg name="input/v2x/objects" default="/perception/object_recognition/detection/v2x/objects"/>
   <arg name="input/v2x/channel" default="detected_objects"/>

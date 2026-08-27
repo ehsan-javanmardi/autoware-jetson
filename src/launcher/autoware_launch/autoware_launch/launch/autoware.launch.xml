@@ -108,8 +108,8 @@
 
   <!-- Perception -->
   <!-- Vehicles reported over V2X rather than seen by a sensor. Nothing in a stock
-       Autoware publishes v2x_objects_topic, so this stays off unless the cart_v2x
-       stack is running. See cart_v2x/README.md. -->
+       Autoware publishes v2x_objects_topic, so this stays off unless the
+       racing_kart_v2x stack is running. See docs/V2X.md. -->
   <arg name="use_v2x_objects" default="false"/>
   <arg name="v2x_objects_topic" default="/perception/object_recognition/detection/v2x/objects"/>
   <group if="$(var launch_perception)">
