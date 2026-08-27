@@ -29,6 +29,20 @@
   <let name="use_eagleye_twist" value="$(eval &quot;'eagleye' == '$(var twist_source)'&quot;)"/>
   <let name="use_gyro_odom_twist" value="$(eval &quot;'gyro_odom' == '$(var twist_source)'&quot;)"/>
 
+  <!-- "gnss" is deliberately kept out of available_args above. pose_estimator_arbiter has
+       no plugin for it, so listing it there would make pose_source:=ndt_gnss spawn an
+       arbiter that cannot manage one of its own sources. Parsing it separately leaves
+       every existing mode byte-for-byte unchanged.
+
+         pose_source:=ndt        NDT, blended with GNSS if the covariance modifier is on
+         pose_source:=gnss       GNSS only, no map matching at all
+         pose_source:=ndt_gnss   an explicit name for the existing NDT+GNSS blend -->
+  <let name="requested_gnss" value="$(eval &quot;'gnss' in '$(var pose_source)'.split('_')&quot;)"/>
+  <let name="use_gnss_pose" value="$(eval &quot;$(var requested_gnss) and not $(var use_ndt_pose)&quot;)"/>
+  <let name="blend_ndt_and_gnss" value="$(eval &quot;$(var requested_gnss) and $(var use_ndt_pose)&quot;)"/>
+  <let name="pose_covariance_modifier_enabled"
+       value="$(eval &quot;'$(var use_autoware_pose_covariance_modifier)'=='true' or $(var blend_ndt_and_gnss)&quot;)"/>
+
   <!-- set initial pose -->
   <let name="user_defined_initial_pose/enable" value="$(eval &quot;len($(var initial_pose)) == 7&quot;)"/>
   <let name="user_defined_initial_pose/pose" value="$(var initial_pose)" if="$(var user_defined_initial_pose/enable)"/>
@@ -39,18 +53,24 @@
     <push-ros-namespace namespace="pose_estimator"/>
     <let
       name="ndt_output_pose_with_cov_topic_name"
-      if="$(eval &quot;'$(var use_autoware_pose_covariance_modifier)'=='true'&quot;)"
+      if="$(var pose_covariance_modifier_enabled)"
       value="/localization/pose_estimator/ndt_scan_matcher/pose_with_covariance"
     />
-    <let name="ndt_output_pose_with_cov_topic_name" unless="$(eval &quot;'$(var use_autoware_pose_covariance_modifier)'=='true'&quot;)" value="/localization/pose_estimator/pose_with_covariance"/>
+    <let name="ndt_output_pose_with_cov_topic_name" unless="$(var pose_covariance_modifier_enabled)" value="/localization/pose_estimator/pose_with_covariance"/>
     <include file="$(find-pkg-share tier4_localization_launch)/launch/pose_twist_estimator/ndt_scan_matcher.launch.xml">
       <arg name="output_pose_with_covariance_topic" value="$(var ndt_output_pose_with_cov_topic_name)"/>
     </include>
 
     <!-- Autoware Pose Covariance Modifier Node Launch -->
-    <group if="$(var use_autoware_pose_covariance_modifier)">
+    <group if="$(var pose_covariance_modifier_enabled)">
       <include file="$(find-pkg-share autoware_pose_covariance_modifier)/launch/pose_covariance_modifier.launch.xml"/>
     </group>
+  </group>
+
+  <!-- GNSS Launch (as pose estimator) -->
+  <group if="$(var use_gnss_pose)">
+    <push-ros-namespace namespace="pose_estimator"/>
+    <include file="$(find-pkg-share gnss_pose_source)/launch/gnss_pose_source.launch.xml"/>
   </group>
 
   <!-- YabLoc Launch (as pose estimator) -->

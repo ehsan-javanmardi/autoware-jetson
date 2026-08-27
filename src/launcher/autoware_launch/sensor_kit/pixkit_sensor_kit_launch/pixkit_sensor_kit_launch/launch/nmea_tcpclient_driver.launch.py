@@ -41,6 +41,22 @@ def generate_launch_description():
             # position rather than base_link, and correcting the antenna offset changes
             # nothing. gnss_link is the frame the sensor kit description actually builds.
             "frame_id": "gnss_link",
+
+            # Estimated position error per GGA quality indicator [m]. The driver turns
+            # these into the NavSatFix covariance as (HDOP * epe)^2, and gnss_poser passes
+            # that straight into the pose the EKF weights its GNSS measurement by. The
+            # upstream defaults claim 4.0 m for an RTK *float* solution, which is roughly
+            # ten times too pessimistic and was making a live float fix report 2.2-3.2 m
+            # of uncertainty. That is harmless while NDT carries the position, and it is
+            # not harmless at all with pose_source:=gnss, where this number is the only
+            # thing telling the EKF how much to trust its one source of position.
+            # Integer upstream, unlike the rest; a float here fails the type check.
+            "epe_quality0": 1000000,    # invalid / unknown
+            "epe_quality1": 4.0,        # single point
+            "epe_quality2": 1.0,        # DGPS; the 0.1 m default is optimistic for it
+            "epe_quality4": 0.02,       # RTK fixed
+            "epe_quality5": 0.4,        # RTK float, realistically decimetre level
+            "epe_quality9": 3.0,        # WAAS
         }],
         arguments=['--ros-args', '--log-level', logger]
         )

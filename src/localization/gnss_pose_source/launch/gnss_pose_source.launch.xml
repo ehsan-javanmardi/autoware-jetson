@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+  <!-- GNSS as the pose estimator, in place of NDT.
+
+       Publishes to the topic the EKF reads, which is what NDT writes in the other
+       pose_source modes, so nothing downstream of the EKF has to change. -->
+
+  <arg name="input_pose_topic" default="/sensing/gnss/pose_with_covariance"/>
+  <arg name="input_fix_topic" default="/sensing/gnss/fix"/>
+  <arg name="input_gnss_ins_orientation_topic" default="/autoware_orientation"/>
+  <arg name="output_pose_topic" default="/localization/pose_estimator/pose_with_covariance"/>
+  <arg name="param_file"
+       default="$(find-pkg-share gnss_pose_source)/config/gnss_pose_source.param.yaml"/>
+
+  <node pkg="gnss_pose_source" exec="gnss_pose_source_node" name="gnss_pose_source"
+        output="screen">
+    <param from="$(var param_file)"/>
+    <remap from="~/input/pose_with_covariance" to="$(var input_pose_topic)"/>
+    <remap from="~/input/fix" to="$(var input_fix_topic)"/>
+    <remap from="~/input/gnss_ins_orientation" to="$(var input_gnss_ins_orientation_topic)"/>
+    <remap from="~/output/pose_with_covariance" to="$(var output_pose_topic)"/>
+  </node>
+</launch>
