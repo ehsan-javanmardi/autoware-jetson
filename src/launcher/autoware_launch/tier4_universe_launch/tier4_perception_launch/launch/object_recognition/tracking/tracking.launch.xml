@@ -48,6 +48,11 @@
   <arg name="input/radar/far_objects" default="/perception/object_recognition/detection/radar/far_objects"/>
   <arg name="input/radar/objects" default="/perception/object_recognition/detection/radar/objects"/>
   <arg name="input/radar/tracked_objects" default="/sensing/radar/tracked_objects"/>
+  <!-- Cooperatively reported vehicles (V2X). Off by default; nothing in a stock
+       Autoware publishes this topic. See cart_v2x/README.md. -->
+  <arg name="use_v2x_objects" default="false"/>
+  <arg name="input/v2x/objects" default="/perception/object_recognition/detection/v2x/objects"/>
+  <arg name="input/v2x/channel" default="detected_objects"/>
   <arg name="input/camera_only/objects" default="/perception/object_recognition/detection/camera_only/objects"/>
   <arg name="input/camera_only/channel" default="camera_streampetr"/>
   <arg name="input/camera_vru/channel" default="camera_vru"/>
@@ -143,6 +148,10 @@
     <let name="input/detection09/channel" value="$(var input/camera_only/channel)"/>
     <let name="input/detection09/objects" value="$(var input/camera_only/objects)"/>
 
+    <let name="input/detection10/channel" value="$(var input/v2x/channel)" if="$(var use_v2x_objects)"/>
+    <let name="input/detection10/channel" value="none" unless="$(var use_v2x_objects)"/>
+    <let name="input/detection10/objects" value="$(var input/v2x/objects)"/>
+
     <!-- camera lidar -->
     <group scoped="false" if="$(eval '&quot;$(var mode)&quot;==&quot;camera_lidar_fusion&quot;')">
       <!-- radar far object is not used -->
@@ -189,6 +198,8 @@
       <arg name="input/detection07/channel" value="$(var input/detection07/channel)"/>
       <arg name="input/detection08/objects" value="$(var input/detection08/objects)"/>
       <arg name="input/detection08/channel" value="$(var input/detection08/channel)"/>
+      <arg name="input/detection10/objects" value="$(var input/detection10/objects)"/>
+      <arg name="input/detection10/channel" value="$(var input/detection10/channel)"/>
       <arg name="output/objects" value="$(var output/objects)"/>
       <arg name="output/merged_objects" value="$(var output/merged_objects)"/>
       <arg name="data_association_matrix_path" value="$(var object_recognition_tracking_multi_object_tracker_data_association_matrix_param_path)"/>

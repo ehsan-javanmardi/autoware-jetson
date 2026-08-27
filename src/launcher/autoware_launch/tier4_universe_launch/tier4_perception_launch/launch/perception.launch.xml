@@ -23,6 +23,8 @@
   <arg name="object_recognition_detection_object_sorter_radar_param_path"/>
   <arg name="object_recognition_tracking_multi_object_tracker_data_association_matrix_param_path"/>
   <arg name="object_recognition_tracking_multi_object_tracker_input_channels_param_path"/>
+  <arg name="use_v2x_objects" default="false" description="feed V2X reported vehicles into the tracker"/>
+  <arg name="v2x_objects_topic" default="/perception/object_recognition/detection/v2x/objects"/>
   <arg name="object_recognition_tracking_multi_object_tracker_node_param_path"/>
   <arg name="object_recognition_tracking_radar_tracked_object_sorter_param_path"/>
   <arg name="object_recognition_tracking_radar_tracked_object_lanelet_filter_param_path"/>
@@ -378,6 +380,8 @@
           <arg name="object_recognition_tracking_object_merger_data_association_matrix_param_path" value="$(var object_recognition_tracking_object_merger_data_association_matrix_param_path)"/>
           <arg name="object_recognition_tracking_object_merger_node_param_path" value="$(var object_recognition_tracking_object_merger_node_param_path)"/>
           <arg name="use_multi_channel_tracker_merger" value="$(var use_multi_channel_tracker_merger)"/>
+          <arg name="use_v2x_objects" value="$(var use_v2x_objects)"/>
+          <arg name="input/v2x/objects" value="$(var v2x_objects_topic)"/>
           <arg name="use_radar_tracking_fusion" value="$(var use_radar_tracking_fusion)"/>
           <arg name="use_detection_by_tracker" value="$(var use_detection_by_tracker)"/>
           <arg name="use_validator" value="$(var use_object_validator)"/>

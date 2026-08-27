@@ -107,8 +107,15 @@
   </group>
 
   <!-- Perception -->
+  <!-- Vehicles reported over V2X rather than seen by a sensor. Nothing in a stock
+       Autoware publishes v2x_objects_topic, so this stays off unless the cart_v2x
+       stack is running. See cart_v2x/README.md. -->
+  <arg name="use_v2x_objects" default="false"/>
+  <arg name="v2x_objects_topic" default="/perception/object_recognition/detection/v2x/objects"/>
   <group if="$(var launch_perception)">
     <include file="$(find-pkg-share autoware_launch)/launch/components/tier4_perception_component.launch.xml">
+      <arg name="use_v2x_objects" value="$(var use_v2x_objects)"/>
+      <arg name="v2x_objects_topic" value="$(var v2x_objects_topic)"/>
       <arg name="data_path" value="$(var data_path)"/>
       <arg name="pointcloud_container_name" value="$(var pointcloud_container_name)"/>
     </include>
