@@ -268,23 +268,42 @@ map, and what to check before committing a new one.
 
 ## Run on Pixkit
 
+Three launcher scripts sit at the root of the workspace. Each takes an optional map
+directory as its first argument, and forwards anything containing `:=` to `ros2 launch`.
+
+| Script | What it starts |
+| ------ | -------------- |
+| [`autoware_kashiwa_os1_128.sh`](autoware_kashiwa_os1_128.sh) | Autoware with the Ouster OS-1-128 as the only lidar. The everyday one. |
+| [`autoware_kashiwa_v2x.sh`](autoware_kashiwa_v2x.sh) | The same, plus `use_v2x_objects:=true` so vehicles reported over V2X reach the tracker. Needs the [racing_kart_v2x](https://github.com/ehsan-javanmardi/racing_kart_v2x) stack running alongside — see [`docs/V2X.md`](docs/V2X.md). |
+| [`autoware_velodyne_kashiwa.sh`](autoware_velodyne_kashiwa.sh) | The underlying launcher the other two wrap. Use it directly for any other combination, for example `lidar_profile:=os2_32` or `pose_source:=gnss`. |
+
 ```bash
-./autoware_velodyne_kashiwa.sh /path/to/your/map
+./autoware_kashiwa_os1_128.sh                       # autoware_map/, OS-1-128
+./autoware_kashiwa_v2x.sh                           # the same, with V2X objects enabled
+./autoware_kashiwa_os1_128.sh /path/to/another/map  # a different map
+./autoware_kashiwa_v2x.sh log_level:=warn           # quieter; default is debug
 ```
 
-Equivalent to:
+> [!NOTE]
+> `autoware_velodyne_kashiwa.sh` is named after hardware this vehicle no longer carries.
+> It launches the Ouster, not a Velodyne. The name is kept because it is referenced from
+> several documents; the two `autoware_kashiwa_*` scripts are the ones to reach for.
+
+Any of them is equivalent to:
 
 ```bash
 source install/setup.bash
 ros2 launch autoware_launch autoware.launch.xml \
     vehicle_model:=pixkit \
     sensor_model:=pixkit_sensor_kit \
-    map_path:=/path/to/your/map \
+    map_path:=<workspace>/autoware_map \
     log_level:=debug
 ```
 
-The map directory defaults to [`autoware_map/`](autoware_map); pass another path as the first
-argument to use a different map. See [Maps](#maps).
+The map directory defaults to [`autoware_map/`](autoware_map), which sits next to the
+scripts and holds the Kashiwanoha map. Pass another path as the first argument for one
+run, or edit `DEFAULT_MAP_DIR` near the top of a script to change it permanently. See
+[Maps](#maps).
 
 ### Making the output readable
 

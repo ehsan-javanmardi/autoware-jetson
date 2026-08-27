@@ -31,8 +31,8 @@ The launch script defaults to `autoware_map/` and picks up whatever `.pcd` and `
 there:
 
 ```bash
-./autoware_velodyne_kashiwa.sh                  # autoware_map/
-./autoware_velodyne_kashiwa.sh /path/to/map     # somewhere else
+./autoware_kashiwa_os1_128.sh                   # autoware_map/, next to the script
+./autoware_kashiwa_os1_128.sh /path/to/map      # somewhere else
 AUTOWARE_MAP_PATH=/path/to/map ./autoware_velodyne_kashiwa.sh
 ```
 
