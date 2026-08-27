@@ -12,7 +12,8 @@ Two different jobs, often confused:
 | **NDT** | the **continuous** pose, forever after | Ouster point cloud matched against `pointcloud_map.pcd` |
 | **gyro odometry** | the twist the pose is propagated with | IMU angular rate + vehicle velocity from CAN |
 
-Configured in
+Which of them actually drives the running estimate is chosen at launch; see
+[Switching mode](#switching-mode) below. The defaults live in
 [`tier4_localization_component.launch.xml`](../../src/launcher/autoware_launch/autoware_launch/launch/components/tier4_localization_component.launch.xml):
 
 ```
@@ -51,12 +52,44 @@ consistent *with the map*, since the vehicle is localized against the same cloud
 drawn on. Raw GNSS drifts relative to a map, loses fix beside buildings, and jumps when fix quality
 changes — discontinuities the planner would be steering through.
 
+## Switching mode
+
+Two launch arguments between them select every combination, and both work from the command
+line on any of the launcher scripts:
+
+| Mode | Command | Position from |
+| ---- | ------- | ------------- |
+| **NDT + GNSS** (default here) | `./autoware_kashiwa.sh` | NDT, blended with GNSS by covariance |
+| NDT only | `./autoware_kashiwa.sh use_autoware_pose_covariance_modifier:=false` | Lidar against the point cloud map |
+| NDT + GNSS, named explicitly | `./autoware_kashiwa.sh pose_source:=ndt_gnss` | Same as the default; the name just makes it obvious |
+| **GNSS only** | `./autoware_kashiwa.sh pose_source:=gnss` | RTK GNSS. No map matching at all |
+
+Other `pose_source` values Autoware supports — `yabloc`, `eagleye`, `artag`,
+`lidar-marker`, and combinations joined by underscores — are untouched and unused on this
+vehicle. `twist_source` is independent: `gyro_odom` (default) or `eagleye`.
+
+Confirm which one you got by looking at what is running:
+
+```bash
+ros2 node list | grep pose_estimator
+#  ndt_scan_matcher + pose_covariance_modifier_node  -> NDT + GNSS
+#  ndt_scan_matcher alone                            -> NDT only
+#  gnss_pose_source alone                            -> GNSS only
+```
+
+`gnss` is a local addition rather than upstream Autoware; the node behind it, its quality
+gate and why a bad GNSS solution is dropped instead of de-weighted are in
+[`gnss_pose_source/README.md`](../../src/localization/gnss_pose_source/README.md).
+
 ## Fusing GNSS into the running estimate
 
 **Enabled on this vehicle.** By default Autoware drops GNSS entirely once initialized; the switch
 that changes this is `use_autoware_pose_covariance_modifier`, declared at the top of
-[`pose_twist_estimator.launch.xml`](../../src/launcher/autoware_launch/tier4_universe_launch/tier4_localization_launch/launch/pose_twist_estimator/pose_twist_estimator.launch.xml).
-It is not exposed as a top level launch argument, so the default in that file is the control.
+[`pose_twist_estimator.launch.xml`](../../src/launcher/autoware_launch/tier4_universe_launch/tier4_localization_launch/launch/pose_twist_estimator/pose_twist_estimator.launch.xml)
+with a default of `true`. It can be overridden on the command line —
+`use_autoware_pose_covariance_modifier:=false` — even though it is declared inside an
+included file, because a launch configuration set on the command line takes precedence
+over a `DeclareLaunchArgument` default. `pose_source:=ndt_gnss` forces it on regardless.
 
 With it on, the topic wiring changes:
 
@@ -83,7 +116,13 @@ float it will mostly fall back to NDT, which is the intended behaviour rather th
 
 It earns its place in open areas where NDT is weak — feature poor roads, wide car parks — and costs
 a second pose source to reason about when localization misbehaves. If diagnosing something strange,
-setting it back to `false` is the first thing to try.
+`use_autoware_pose_covariance_modifier:=false` is the first thing to try.
+
+Note that these thresholds are read against the covariance the GNSS driver reports, so they
+are only as meaningful as that number. The `epe` table that produces it was corrected for
+this vehicle — an RTK float solution had been reporting 2.24–3.16 m instead of about 0.3 m,
+which put it beyond every threshold above and made the modifier fall back to NDT
+permanently. See [`gnss_pose_source/README.md`](../../src/localization/gnss_pose_source/README.md).
 
 ## When it does not initialize
 
