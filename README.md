@@ -263,8 +263,20 @@ geometry, where each sensor sits relative to it, and the front/rear GNSS antenna
 A point cloud map and a lanelet2 map are committed in [`autoware_map/`](autoware_map): Kashiwanoha
 Campus, MGRS grid `54SVE`, 22 MB. This is what the launch script loads unless told otherwise.
 
-See [`docs/MAPS.md`](docs/MAPS.md) for what each file is, how to point Autoware at a different
-map, and what to check before committing a new one.
+Four lanelet2 variants of the same road network live there. The Pixkit has no camera, so Autoware
+reads every traffic signal as unknown and holds at the stop line forever; drive with the variant
+that has the traffic lights unbound from the lanes:
+
+```bash
+./autoware_velodyne_kashiwa.sh lanelet2_map_file:=lanelet2_map_no_traffic_light.osm
+```
+
+Pass that argument explicitly - the scripts otherwise pick whichever `.osm` sorts first in the
+directory, which is not `lanelet2_map.osm`.
+
+See [`docs/MAPS.md`](docs/MAPS.md) for what each file is, exactly what the traffic light edit
+removed and how to reverse it, how to point Autoware at a different map, and what to check before
+committing a new one.
 
 ## Run on Pixkit
 
