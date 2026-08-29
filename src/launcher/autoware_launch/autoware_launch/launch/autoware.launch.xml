@@ -38,7 +38,15 @@
   <arg name="system_run_mode" default="online" description="run mode in system"/>
   <arg name="launch_system_monitor" default="true" description="launch system monitor"/>
   <arg name="launch_dummy_diag_publisher" default="false" description="launch dummy diag publisher"/>
-  <arg name="diagnostic_graph_aggregator_graph_path" default="$(find-pkg-share autoware_launch)/config/system/diagnostics/autoware-main.yaml" description="diagnostic graph config"/>
+  <!-- pose_source is declared here as well as in the localization component, because the
+       diagnostic graph has to know whether a map matcher is running. The main graph
+       requires "ndt_scan_matcher: scan_matching_status", which nothing publishes when NDT
+       is not started, so with pose_source:=gnss that unit stays STALE, /autoware/localization
+       goes ERROR, and autonomous mode is never offered. -->
+  <arg name="pose_source" default="ndt" description="pose estimator: ndt, gnss, ndt_gnss, yabloc, eagleye, artag, lidar-marker"/>
+  <let name="map_matcher_is_running" value="$(eval &quot;'ndt' in '$(var pose_source)'.split('_')&quot;)"/>
+  <arg name="diagnostic_graph_aggregator_graph_path" default="$(find-pkg-share autoware_launch)/config/system/diagnostics/autoware-main.yaml" if="$(var map_matcher_is_running)" description="diagnostic graph config"/>
+  <arg name="diagnostic_graph_aggregator_graph_path" default="$(find-pkg-share autoware_launch)/config/system/diagnostics/autoware-main-no-scan-matching.yaml" unless="$(var map_matcher_is_running)" description="diagnostic graph config"/>
   <!-- Tools -->
   <arg name="rviz" default="true" description="launch rviz"/>
   <arg name="rviz_config_name" default="autoware.rviz" description="rviz config name"/>

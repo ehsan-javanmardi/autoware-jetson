@@ -1,0 +1,97 @@
+# The main diagnostic graph for a run with no map matcher (pose_source:=gnss).
+#
+# Selected automatically by autoware.launch.xml when pose_source names no map matcher.
+# The only difference from autoware-main.yaml is that it pulls in
+# localization-no-scan-matching.yaml, so the /autoware/localization branch does not
+# require a diagnostic that only ndt_scan_matcher can publish.
+#
+# The obvious way to write this is an overlay:
+#
+#   files: [{ path: $(dirname)/autoware-main.yaml }]
+#   edits: [{ type: remove, path: /autoware/localization/scan_matching_status }]
+#
+# That is exactly what autoware-main-e2e.yaml does, and it SEGFAULTS the aggregator in
+# this version - as does autoware-main-e2e.yaml itself, verified by running
+# aggregator_node against it directly. The config parses fine; the "tree" tool prints the
+# expected graph. The crash is in the node. So the file list is duplicated instead, which
+# is uglier and works.
+files:
+  - { path: $(dirname)/control.yaml }
+  - { path: $(dirname)/localization-no-scan-matching.yaml }
+  - { path: $(dirname)/map.yaml }
+  - { path: $(dirname)/perception.yaml }
+  - { path: $(dirname)/planning.yaml }
+  - { path: $(dirname)/system.yaml }
+  - { path: $(dirname)/vehicle.yaml }
+
+units:
+  - path: /autoware/modes/local
+    type: and
+    list:
+      - { type: link, link: /autoware/vehicle }
+      - { type: link, link: /autoware/system }
+      - { type: link, link: /autoware/control/local }
+      - { type: link, link: /adapi/mrm_request/delegate }
+
+  - path: /autoware/modes/remote
+    type: and
+    list:
+      - { type: link, link: /autoware/vehicle }
+      - { type: link, link: /autoware/system }
+      - { type: link, link: /autoware/control/remote }
+      - { type: link, link: /adapi/mrm_request/delegate }
+
+  - path: /autoware/modes/stop
+    type: and
+    list:
+      - { type: link, link: /adapi/mrm_request/delegate }
+
+  - path: /autoware/modes/autonomous
+    type: and
+    list:
+      - { type: link, link: /autoware/map }
+      - { type: link, link: /autoware/localization }
+      - { type: link, link: /autoware/planning }
+      - { type: link, link: /autoware/perception }
+      - { type: link, link: /autoware/control }
+      - { type: link, link: /autoware/vehicle }
+      - { type: link, link: /autoware/system }
+      - { type: link, link: /adapi/mrm_request/delegate }
+
+  - path: /autoware/modes/pull_over
+    type: and
+    list:
+      - { type: link, link: /autoware/map }
+      - { type: link, link: /autoware/localization }
+      - { type: link, link: /autoware/planning }
+      - { type: link, link: /autoware/perception }
+      - { type: link, link: /autoware/control }
+      - { type: link, link: /autoware/vehicle }
+      - { type: link, link: /autoware/system }
+
+  - path: /autoware/modes/comfortable_stop
+    type: and
+    list:
+      - { type: link, link: /autoware/map }
+      - { type: link, link: /autoware/localization }
+      - { type: link, link: /autoware/planning }
+      - { type: link, link: /autoware/perception }
+      - { type: link, link: /autoware/control }
+      - { type: link, link: /autoware/vehicle }
+      - { type: link, link: /autoware/system }
+
+  - path: /autoware/modes/emergency_stop
+    type: and
+    list:
+      - { type: link, link: /autoware/vehicle }
+      - { type: link, link: /autoware/system }
+
+  - path: /autoware/debug/tools
+    type: and
+    list:
+      - { type: link, link: /autoware/system/service_log_checker }
+
+  - path: /adapi/mrm_request/delegate
+    type: diag
+    node: /adapi/node/mrm_request
+    name: delegate
