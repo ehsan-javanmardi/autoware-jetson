@@ -262,22 +262,29 @@ geometry, where each sensor sits relative to it, and the front/rear GNSS antenna
 ## Maps
 
 A point cloud map and a lanelet2 map are committed in [`autoware_map/`](autoware_map): Kashiwanoha
-Campus, MGRS grid `54SVE`, 22 MB. This is what the launch script loads unless told otherwise.
+Campus, MGRS grid `54SVE`, 22 MB. The launchers load exactly these two files, by name:
 
-Four lanelet2 variants of the same road network live there. The Pixkit has no camera, so Autoware
-reads every traffic signal as unknown and holds at the stop line forever; drive with the variant
-that has the traffic lights unbound from the lanes:
-
-```bash
-./autoware_velodyne_kashiwa.sh lanelet2_map_file:=lanelet2_map_no_traffic_light.osm
+```text
+autoware_map/
+├── pointcloud_map.pcd          loaded as-is
+├── lanelet2_map.osm            loaded as-is
+├── map_projector_info.yaml
+└── other_maps/                 variants, off the search path
+    ├── Kashiwa_campus.osm                     as delivered
+    ├── Kashiwa_campus_no-traffic-light.osm    what lanelet2_map.osm currently is
+    └── Kashiwa_campus_garage-front-added.osm  +2 lanelets, rough, needs revision
 ```
 
-Pass that argument explicitly - the scripts otherwise pick whichever `.osm` sorts first in the
-directory, which is not `lanelet2_map.osm`.
+Nothing is auto-detected. To drive a different road network, copy it over `lanelet2_map.osm`;
+to use a map elsewhere, pass its directory as the first argument to any launcher.
 
-See [`docs/MAPS.md`](docs/MAPS.md) for what each file is, exactly what the traffic light edit
-removed and how to reverse it, how to point Autoware at a different map, and what to check before
-committing a new one.
+The map in place has every traffic light and stop line removed. The Pixkit has no camera, so
+Autoware reads every traffic signal as unknown and would hold at the stop line forever — that
+variant is the default for exactly this reason.
+
+See [`docs/MAPS.md`](docs/MAPS.md) for what each variant contains, measured; what the traffic
+light edit removed; how the scripts locate the map and why they no longer search for it; and
+what to check before committing a new one.
 
 ## Run on Pixkit
 
@@ -298,10 +305,8 @@ directory as its first argument, and forwards anything containing `:=` to `ros2 
 ```
 
 > [!NOTE]
-> These replace `autoware_velodyne_kashiwa.sh`, which was named after a lidar this vehicle
-> does not carry. Each script is self-contained rather than wrapping the others, so editing
-> one leaves the rest alone — at the cost of the map handling and DDS setup being repeated
-> in all three.
+> Each script is self-contained rather than wrapping the others, so editing one leaves the
+> rest alone — at the cost of the map handling and DDS setup being repeated in all three.
 
 Each is equivalent to:
 
