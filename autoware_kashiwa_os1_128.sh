@@ -6,29 +6,33 @@
 # os1_128 is also the launch default, so this script makes the choice visible rather than
 # changing it. The OS-2-32 is lidar_profile:=os2_32; see docs/SENSORS.md.
 #
-# Default map dir: ./autoware_map  (override with $1 or $AUTOWARE_MAP_PATH).
+# Map: ./autoware_map, holding pointcloud_map.pcd and lanelet2_map.osm under those exact
+# names. Pass a different directory as the first argument. Nothing is auto-detected.
 # See docs/MAPS.md for what a map directory has to contain.
 set -e
 
 AUTOWARE_WS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# Map directory. autoware_map/ sits next to this script and holds the Kashiwanoha map the
-# workspace ships with. Change this line to point somewhere else permanently, or pass a
-# different path as the first argument for one run.
-DEFAULT_MAP_PATH="$AUTOWARE_WS/autoware_map"
-# The previous layout kept the maps one level up, so that location is still accepted.
-if [ ! -d "$DEFAULT_MAP_PATH" ] && [ -d "$AUTOWARE_WS/../autoware_map" ]; then
-    DEFAULT_MAP_PATH="$(cd "$AUTOWARE_WS/.." && pwd)/autoware_map"
+
+# --- Map ---------------------------------------------------------------------------
+# The map is ./autoware_map in this repository, holding exactly these two files under
+# exactly these names. Nothing is searched for: no globbing, no fallback to a parent
+# directory, no picking "whichever .osm sorts first". That search is what previously made
+# the script load a different map from the one it appeared to, because ls order decided it.
+#
+# To drive a different road network, copy it over lanelet2_map.osm. To use a map that lives
+# somewhere else entirely, pass its directory as the first argument; it has to contain the
+# same two filenames.
+MAP_DIR="$AUTOWARE_WS/autoware_map"
+PCD_FILE="pointcloud_map.pcd"
+LANELET_FILE="lanelet2_map.osm"
+
+# A first argument without ":=" is a map directory; everything else is a launch argument
+# forwarded to ros2 launch.
+if [ $# -gt 0 ] && [[ "$1" != *":="* ]]; then
+    MAP_DIR="$1"
+    shift
 fi
-# Anything containing ":=" is a launch argument and is forwarded to ros2 launch, so the map
-# directory can be omitted.
-if [[ "${1:-}" == *":="* ]]; then
-    MAP_ARG=""
-    EXTRA_ARGS=("$@")
-else
-    MAP_ARG="${1:-}"
-    EXTRA_ARGS=("${@:2}")
-fi
-MAP_PATH="${MAP_ARG:-${AUTOWARE_MAP_PATH:-$DEFAULT_MAP_PATH}}"
+EXTRA_ARGS=("$@")
 
 if [ ! -f "$AUTOWARE_WS/install/setup.bash" ]; then
     echo "error: $AUTOWARE_WS/install/setup.bash not found - build first:" >&2
@@ -36,34 +40,26 @@ if [ ! -f "$AUTOWARE_WS/install/setup.bash" ]; then
     exit 1
 fi
 
-if [ ! -d "$MAP_PATH" ]; then
-    echo "error: map directory not found: $MAP_PATH" >&2
+if [ ! -d "$MAP_DIR" ]; then
+    echo "error: map directory not found: $MAP_DIR" >&2
     exit 1
 fi
+for f in "$PCD_FILE" "$LANELET_FILE"; do
+    if [ ! -f "$MAP_DIR/$f" ]; then
+        echo "error: $MAP_DIR/$f not found." >&2
+        echo "       A map directory must contain $PCD_FILE and $LANELET_FILE under those" >&2
+        echo "       exact names. See docs/MAPS.md." >&2
+        exit 1
+    fi
+done
 
-# Autoware defaults pointcloud_map_file to "pointcloud_map.pcd"; a map may ship as
-# something else, so detect whatever .pcd is actually present.
-PCD_FILE="$(cd "$MAP_PATH" && ls -1 *.pcd 2>/dev/null | head -n1)"
-if [ -z "$PCD_FILE" ]; then
-    echo "error: no .pcd point cloud map found in $MAP_PATH" >&2
-    exit 1
-fi
-
-# Whichever .osm sorts first. With several in one directory that choice is not obvious, so
-# it is echoed below; pass lanelet2_map_file:=... to be explicit.
-LANELET_FILE="$(cd "$MAP_PATH" && ls -1 *.osm 2>/dev/null | head -n1)"
-if [ -z "$LANELET_FILE" ]; then
-    echo "error: no .osm lanelet2 map found in $MAP_PATH" >&2
-    exit 1
-fi
-
-if [ ! -f "$MAP_PATH/map_projector_info.yaml" ]; then
-    echo "warning: $MAP_PATH/map_projector_info.yaml missing - Autoware will fall back" >&2
+if [ ! -f "$MAP_DIR/map_projector_info.yaml" ]; then
+    echo "warning: $MAP_DIR/map_projector_info.yaml missing - Autoware will fall back" >&2
     echo "         to deriving projection from the lanelet2 map (deprecated)." >&2
 fi
 
 echo "workspace : $AUTOWARE_WS"
-echo "map       : $MAP_PATH"
+echo "map       : $MAP_DIR"
 echo "pointcloud: $PCD_FILE"
 echo "lanelet2  : $LANELET_FILE"
 echo "lidar     : Ouster OS-1-128"
@@ -87,7 +83,7 @@ source "$AUTOWARE_WS/install/setup.bash"
 ros2 launch autoware_launch autoware.launch.xml \
     vehicle_model:=pixkit \
     sensor_model:=pixkit_sensor_kit \
-    map_path:="$MAP_PATH" \
+    map_path:="$MAP_DIR" \
     pointcloud_map_file:="$PCD_FILE" \
     lanelet2_map_file:="$LANELET_FILE" \
     lidar_profile:=os1_128 \

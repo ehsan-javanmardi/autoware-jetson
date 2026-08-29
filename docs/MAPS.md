@@ -17,9 +17,9 @@ autoware_map/
     └── Kashiwa_campus_garage-front-added.osm
 ```
 
-Only the three files at the top level are ever loaded. `other_maps/` is a shelf: to switch
-road networks, copy one over `lanelet2_map.osm`, or pass it explicitly with
-`lanelet2_map_file:=`.
+Only the three files at the top level are ever loaded, and only under those exact names.
+`other_maps/` is a shelf, off the search path: to switch road networks, copy one over
+`lanelet2_map.osm`. See [How the scripts find the map](#how-the-scripts-find-the-map).
 
 Everything here is Kashiwanoha Campus, Kashiwa, Chiba, in MGRS grid `54SVE`. There is one
 point cloud and one projection; the variants differ only in the lanelet2 layer.
@@ -104,52 +104,70 @@ pedestrian signal. Without it the crosswalk module falls back to its unsignalise
 yield to detected pedestrians rather than obey a light. Crosswalk safety now rests entirely
 on lidar perception.
 
-## Choosing a map
+## How the scripts find the map
 
-> [!IMPORTANT]
-> The launch scripts pick a map with `ls -1 *.osm | head -n1`, which returns whatever sorts
-> first in the current locale. With one `.osm` at the top level that is `lanelet2_map.osm`,
-> which is what you want — but add a second file there and the choice silently changes.
-> Passing `lanelet2_map_file:=` is the only way to be certain.
+Deliberately, they do not. There is no search, no globbing and no fallback:
 
 ```bash
-./autoware_kashiwa_os1_128.sh                                          # lanelet2_map.osm
-./autoware_kashiwa_os1_128.sh lanelet2_map_file:=lanelet2_map.osm      # the same, explicitly
+MAP_DIR="$AUTOWARE_WS/autoware_map"
+PCD_FILE="pointcloud_map.pcd"
+LANELET_FILE="lanelet2_map.osm"
 ```
 
-The script echoes `lanelet2  : <file>` in its first four lines. Read it before driving.
+A map directory is a directory containing those **two exact filenames**, plus
+`map_projector_info.yaml`. The script checks all three exist and stops with a clear error
+if any is missing, rather than proceeding with something it guessed.
 
-To drive a different variant, copy it into place:
+| You want | Do this |
+| --- | --- |
+| The map in this repository | Nothing. `./autoware_map` is the default |
+| A different road network, same location | Copy it over `autoware_map/lanelet2_map.osm` |
+| A map somewhere else entirely | Pass its directory as the **first argument** |
 
 ```bash
-cd autoware_map
+./autoware_kashiwa_os1_128.sh                    # ./autoware_map
+./autoware_kashiwa_os1_128.sh /path/to/other_map # a directory holding the same two filenames
+
+cd autoware_map                                  # switch road network
 cp other_maps/Kashiwa_campus_garage-front-added.osm lanelet2_map.osm
 ```
 
-`other_maps/` is not on the search path, so a file left there can never be picked up by
-accident.
-
-## Using a map directory
+Anything containing `:=` is a launch argument and is forwarded to `ros2 launch`, so the map
+directory can be omitted:
 
 ```bash
-./autoware_kashiwa_os1_128.sh                   # autoware_map/, next to the script
-./autoware_kashiwa_os1_128.sh /path/to/map      # somewhere else
-AUTOWARE_MAP_PATH=/path/to/map ./autoware_kashiwa.sh
+./autoware_kashiwa_os1_128.sh pose_source:=gnss
+./autoware_kashiwa_os1_128.sh /path/to/other_map pose_source:=gnss
 ```
 
-Launching Autoware directly takes the same directory as `map_path`:
+The script echoes what it settled on in its first four lines. Read them before driving:
 
-```bash
-ros2 launch autoware_launch autoware.launch.xml \
-    vehicle_model:=pixkit \
-    sensor_model:=pixkit_sensor_kit \
-    map_path:=$PWD/autoware_map \
-    pointcloud_map_file:=pointcloud_map.pcd \
-    lanelet2_map_file:=lanelet2_map.osm
+```text
+workspace : /home/ehsan/workspace/pix_autoware
+map       : /home/ehsan/workspace/pix_autoware/autoware_map
+pointcloud: pointcloud_map.pcd
+lanelet2  : lanelet2_map.osm
 ```
 
-`pointcloud_map_file` and `lanelet2_map_file` default to `pointcloud_map.pcd` and
-`lanelet2_map.osm`, which is why the top level files carry those names.
+### Why the search was removed
+
+The scripts used to glob for the map: `ls -1 *.pcd | head -n1` and `ls -1 *.osm | head -n1`,
+with a fallback to `../autoware_map` and an `AUTOWARE_MAP_PATH` environment variable on top.
+
+It was worse than complicated, it was wrong. With several `.osm` files in the directory the
+one that got loaded was whichever sorted first in the current locale. That was
+`lanelet2_map_garage added.osm` — a map with a rough, undriven path in it — while the script
+appeared to be loading `lanelet2_map.osm`. Nothing in the output looked unusual unless you
+knew to check the `lanelet2  :` line against what you expected.
+
+Fixed filenames cannot do that. Adding a file to the directory now changes nothing, and
+`other_maps/` is off the path entirely.
+
+Two consequences worth knowing:
+
+- **A map using different filenames will not load.** Rename it, or pass
+  `pointcloud_map_file:=` and `lanelet2_map_file:=` explicitly to override.
+- **`AUTOWARE_MAP_PATH` is gone.** Use the first argument.
 
 ## Verifying a map after editing it
 

@@ -136,10 +136,11 @@ Nine packages were overwritten in place by the Pixkit versions (same paths, so n
   `autoware_sensing_msgs`, `tf2`, `tf2_eigen` and `tf2_ros`, none of which were declared in
   `package.xml`. colcon only exposes declared dependencies to a package's build, so it configured
   successfully only while a Debian copy of `autoware_sensing_msgs` happened to be installed.
-- **`autoware_kashiwa.sh` rewritten.** The upstream copy hardcoded
-  `/home/autoware/pixkit_autoware_0.45.1/...`. It now resolves the workspace from its own location,
-  accepts the map path as an argument or `$AUTOWARE_MAP_PATH`, and fails with a clear message if the
-  workspace is unbuilt or the map is missing.
+- **`autoware_kashiwa.sh` rewritten**, and split into three named launchers. The upstream copy
+  hardcoded `/home/autoware/pixkit_autoware_0.45.1/...`. They now resolve the workspace from their
+  own location, take the map directory as an optional first argument, and fail with a clear message
+  if the workspace is unbuilt or the map is missing. The map filenames are fixed rather than
+  detected; see [`docs/MAPS.md`](docs/MAPS.md).
 
 ---
 
@@ -299,7 +300,7 @@ directory as its first argument, and forwards anything containing `:=` to `ros2 
 > [!NOTE]
 > These replace `autoware_velodyne_kashiwa.sh`, which was named after a lidar this vehicle
 > does not carry. Each script is self-contained rather than wrapping the others, so editing
-> one leaves the rest alone — at the cost of the map discovery and DDS setup being repeated
+> one leaves the rest alone — at the cost of the map handling and DDS setup being repeated
 > in all three.
 
 Each is equivalent to:
@@ -313,10 +314,10 @@ ros2 launch autoware_launch autoware.launch.xml \
     log_level:=debug
 ```
 
-The map directory defaults to [`autoware_map/`](autoware_map), which sits next to the
-scripts and holds the Kashiwanoha map. Pass another path as the first argument for one
-run, or edit `DEFAULT_MAP_DIR` near the top of a script to change it permanently. See
-[Maps](#maps).
+The map directory defaults to [`autoware_map/`](autoware_map), next to the scripts. It must
+contain `pointcloud_map.pcd` and `lanelet2_map.osm` under exactly those names — nothing is
+searched for or auto-detected. Pass another directory as the first argument to use a map
+that lives elsewhere. See [`docs/MAPS.md`](docs/MAPS.md).
 
 ### Making the output readable
 
