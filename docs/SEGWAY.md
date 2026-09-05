@@ -53,32 +53,82 @@ unit is faulty is untested.
 
 `/dev/ttyUSB0` held for 10 s with no dropout, which the FTDI never managed.
 
-### But the chassis is silent
+### The chassis does not respond
 
-Passive listen on `/dev/ttyUSB0`, 2 s per rate — **zero bytes at every baud**:
+Confirmed by running the vendor SDK's own connect path (read-only probe, no motion
+commands — see [Probing the chassis](#probing-the-chassis)):
 
 ```
-115200 / 230400 / 460800 / 921600 / 57600 / 9600  ->  0 bytes
+serial open success! serial port:/dev/ttyUSB0, baud:921600
+Obtaining the chassis firmware version number timed out
+init_control_ctrl() -> 0  (ok)
+
+  host_version      : 0x2027      <- the SDK's own version, not the chassis
+  central_version   : 0xffff      <- no reply
+  motor_version     : 0xffff      <- no reply
+  bat_soc           : 0 %
+  bat_mvol          : 0 mV
+  version_matched   : 0xffff      <- 0xffff = "get chassis version overtime"
 ```
 
-Modem lines read `CTS: low, DSR: low, CD: low`. That is expected here and **not** a
-fault — only TX/RX/GND are wired, so the handshake lines are simply absent.
+The port opens and the host transmits, but **every value that must come from the
+chassis is absent**. `0xffff` is the SDK's explicit no-reply sentinel. Passive listening
+at 921600 also returned zero bytes.
 
-### Interpretation
+So: the Jetson side works end to end, and the chassis is not answering.
 
-The RMP does not appear to stream feedback on its own; it needs the host to initiate.
-This matches the SDK design, where `init_control_ctrl()` opens the port and starts a
-comms thread rather than merely listening.
+### Baud rate: 921600
 
-Remaining unknowns, in the order they should be resolved:
+Settled empirically — the SDK prints it on open:
 
-1. **Does the chassis need a host request?** Likely. Confirming means writing to a
-   powered mobile base — see Safety before doing it.
-2. **Are TX and RX crossed correctly?** Converter TX → chassis RX, converter RX →
-   chassis TX. Silence looks identical either way, so this cannot be ruled out from
-   software.
-3. **What baud does the 401 use?** Not in the driver source; it is computed inside the
-   closed library. Get it from the manual.
+```
+serial open success! serial port:/dev/ttyUSB0, baud:921600
+```
+
+This is hard-coded in `libctrl_arm64-v8a.so` and not configurable through the API.
+
+### Remaining causes
+
+With the host side proven, the fault is between the converter and the chassis:
+
+1. **TX and RX swapped.** The single most common cause, and indistinguishable from any
+   other silence in software. Converter TX → chassis RX, converter RX → chassis TX.
+   Try swapping the two wires.
+2. **Wrong converter or wrong signal levels.** The converter currently attached is a
+   **Silicon Labs CP2102** (`10c4:ea60`), a generic USB-TTL bridge. The unit seen
+   earlier was an **FTDI FT232RL**. If the manual specifies a particular converter — or
+   if the chassis port is RS-232 rather than TTL — a generic TTL board will not
+   communicate, and RS-232 voltages could damage it. Confirm against the manual.
+3. **Chassis port or mode.** Verify the wires are on the chassis's serial port (not a
+   different header), that the chassis is powered and out of E-stop, and that it is not
+   configured for CAN control instead.
+
+### Probing the chassis
+
+A minimal read-only probe against the vendor SDK, useful for re-testing after rewiring.
+It calls only the connect path and status getters — never `set_cmd_vel` or
+`set_enable_ctrl`, so it cannot command motion:
+
+```c
+set_smart_car_serial("ttyUSB0");
+set_comu_interface(comu_serial);
+init_control_ctrl();
+/* then poll get_chassis_central_version(), get_bat_soc(), ... */
+```
+
+Build against the SDK (needs an rpath — `sudo` strips `LD_LIBRARY_PATH`):
+
+```bash
+gcc -o rmp_probe rmp_probe.c -I segwayrmp/include \
+    -L segwayrmp/lib -lctrl_arm64-v8a -lpthread -Wl,-rpath,$PWD/segwayrmp/lib
+sudo ./rmp_probe
+```
+
+`central_version` reading anything other than `0xffff` means the chassis is talking.
+
+The SDK also prints a request for a `password.txt` from Ninebot and an administrator
+password. That is only for the firmware-upgrade (IAP) paths — basic communication works
+without it, as shown above.
 
 ### Toolchain on this machine
 
