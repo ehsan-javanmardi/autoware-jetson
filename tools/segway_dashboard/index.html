@@ -292,6 +292,7 @@
             <div class="row"><span class="k">Motors</span><span class="v" id="c-enabled">—</span></div>
             <div class="row"><span class="k">Chassis mode</span><span class="v" id="c-mode">—</span></div>
             <div class="row"><span class="k">Wheels</span><span class="v" id="c-wheels">—</span></div>
+            <div class="row"><span class="k">Chassis is listening to</span><span class="v" id="c-src">—</span></div>
             <div class="row"><span class="k">Deadman</span><span class="v" id="c-deadman">—</span></div>
           </div>
           <div class="note" id="c-hint">&nbsp;</div>
@@ -451,6 +452,14 @@ function renderControl(d) {
     ? '<span class="chip ok">enabled</span>' : '<span class="chip mut">disabled</span>';
   $("c-mode").textContent = m.name || "—";
   $("c-wheels").textContent = m.wheels || "—";
+  // What the chassis itself reports, as opposed to the mode we asked for. When the host
+  // has it, this should stop saying "RC handset".
+  const srcTxt = m.control_source_raw != null
+    ? `${m.control_source} (${m.control_source_raw})` : (m.control_source || "—");
+  const hostHas = m.control_source_raw != null && m.control_source_raw !== 0;
+  $("c-src").innerHTML = control.enabled
+    ? `<span class="chip ${hostHas ? "ok" : "warn"}">${srcTxt}</span>`
+    : `<span class="chip mut">${srcTxt}</span>`;
   $("c-deadman").innerHTML = control.timed_out
     ? '<span class="chip warn">tripped</span>'
     : `<span class="chip mut">${control.client_timeout_s}s</span>`;
