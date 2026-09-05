@@ -59,7 +59,7 @@ the concatenate node copies them straight through; and the driver's own static t
    ```
 
    If the interface gets no IPv4 at all, see the NetworkManager note in
-   [`SETUP_STATE.md`](../SETUP_STATE.md): Ubuntu ships `unmanaged-devices=*,except:type:wifi`,
+   Ubuntu ships `unmanaged-devices=*,except:type:wifi`,
    which leaves every wired NIC unmanaged, and `.local` names will not resolve either because
    avahi does not do IPv4 mDNS on an interface without an IPv4 address.
 

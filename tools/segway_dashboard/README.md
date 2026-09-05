@@ -165,5 +165,5 @@ Without `--allow-control` all three return HTTP 403.
   registration (`aprctrl_datastamped_jni_register`) rather than simple getters, which
   needs a C shim to bridge into Python. Everything on the dashboard comes from
   poll-style getters.
-- See [`docs/SEGWAY.md`](../../docs/SEGWAY.md) for wiring, the connector pinout, and the
+- See [`docs/SEGWAY_HARDWARE.md`](../../docs/SEGWAY_HARDWARE.md) for wiring, the connector pinout, and the
   troubleshooting history.

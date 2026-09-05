@@ -16,7 +16,7 @@ established on this vehicle is written down here.
 
 Everything in perception starts from `/sensing/lidar/concatenated/pointcloud`. How that topic comes
 to exist with one lidar, and why it is a passthrough rather than the concatenate node, is in
-[`../LAUNCH_CHAIN.md`](../LAUNCH_CHAIN.md) and [`../SENSORS.md`](../SENSORS.md#sensor-combinations).
+[`../LAUNCHING.md`](../LAUNCHING.md) and [`../SENSORS.md`](../SENSORS.md#sensor-combinations).
 
 Two properties of that cloud matter to everything downstream:
 

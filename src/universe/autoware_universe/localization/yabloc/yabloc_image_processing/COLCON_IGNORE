@@ -1,0 +1,4 @@
+Excluded on the Jetson: graph_segment needs OpenCV's ximgproc contrib module, which
+JetPack's OpenCV 4.8.0 does not ship, and Ubuntu's libopencv-contrib-dev cannot be
+installed without displacing JetPack's CUDA-enabled OpenCV. See README.md section 5.
+Delete this file to build the package again once ximgproc is available.

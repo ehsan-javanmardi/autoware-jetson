@@ -13,7 +13,7 @@ what to change when the hardware moves to another vehicle.
 | Ultrasonic radar, ARS408 | not enabled | over CAN | [ULTRASONIC_RADAR.md](sensors/ULTRASONIC_RADAR.md) |
 
 The vehicle interface itself is not a sensor but is on the same list of things that have to be up
-before anything moves: see [VEHICLE_CAN_AND_RUNTIME.md](VEHICLE_CAN_AND_RUNTIME.md).
+before anything moves.
 
 ## Sensor LAN
 
@@ -39,7 +39,7 @@ configures the sensor and then waits forever without an error.
 
 Because the segment has no gateway, a device that needs the internet — the GNSS receiver reaching
 the NTRIP caster — is routed by `pixkit-sensor-nat.service`, which masquerades `192.168.1.0/24`
-out of the default-route interface. See [SETUP_STATE.md](SETUP_STATE.md).
+out of the default-route interface.
 
 ## Sensor combinations
 
@@ -100,7 +100,7 @@ vehicle carries a different lidar set.
 
 **Which sensors does a launch actually start?** `sensing.launch.xml` in the sensor kit is the top
 of the tree: lidar, IMU, GNSS and camera are included, ultrasonic radar is commented out. See
-[LAUNCH_CHAIN.md](LAUNCH_CHAIN.md) for how Autoware reaches that file and what happens after it.
+[LAUNCHING.md](LAUNCHING.md) for how Autoware reaches that file and what happens after it.
 
 **Add a sensor to the vehicle.** Three things have to line up, and forgetting any one of them
 produces a silent failure rather than an error:

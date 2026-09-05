@@ -245,11 +245,11 @@ differs from the 220, there is no source-level fix.
 The driver supports CAN (`set_comu_interface(comu_can)`), and this Jetson already has
 `can0`/`can1` (currently `DOWN`). If the USB link stays unreliable, CAN avoids the
 converter and its cable entirely — see
-[VEHICLE_CAN_AND_RUNTIME.md](VEHICLE_CAN_AND_RUNTIME.md) for bring-up on this machine.
+`ip link set can0 up type can bitrate 500000` to bring a bus up.
 
 ## Connecting
 
-[SEGWAY_CONNECT.md](SEGWAY_CONNECT.md) covers every route to the chassis — LAN cable,
+[SEGWAY_CONNECTING.md](SEGWAY_CONNECTING.md) covers every route to the chassis — LAN cable,
 WiFi, Tailscale from anywhere — plus how to start and stop the dashboard server and
 drive from a phone.
 

@@ -2,7 +2,7 @@
 
 Every way to reach the chassis, from the serial cable up to driving it from a phone on
 cellular. For wiring, the connector pinout and the troubleshooting history, see
-[SEGWAY.md](SEGWAY.md).
+[SEGWAY_HARDWARE.md](SEGWAY_HARDWARE.md).
 
 ## Quick reference
 

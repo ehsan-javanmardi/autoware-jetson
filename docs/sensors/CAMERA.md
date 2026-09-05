@@ -44,7 +44,7 @@ ros2 topic hz /sensing/camera/traffic_light/image_raw
 ```
 
 `usb_cam_node_exe` failing to start is a known open item in
-[`SETUP_STATE.md`](../SETUP_STATE.md); check the device path first.
+check the device path first.
 
 ## Intrinsics
 

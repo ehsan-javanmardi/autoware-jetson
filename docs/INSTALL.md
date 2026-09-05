@@ -110,7 +110,7 @@ over USB serial through a CP2102 converter. Nothing in the install above touches
 **no Segway ROS 2 driver is in `src/` yet** — the vehicle interface currently committed
 is `pix_hooke_driver`, for the Pixkit chassis this tree was forked from.
 
-Bring-up is in progress and is documented separately in [SEGWAY.md](SEGWAY.md): the
+Bring-up is in progress and is documented separately in [SEGWAY_HARDWARE.md](SEGWAY_HARDWARE.md): the
 serial link is up and the host side is proven, but the chassis does not answer, most
 likely a TX/RX or converter-type issue. Read that file before wiring or powering the
 base — it is a powered mobile base, and the safety notes there are not optional.

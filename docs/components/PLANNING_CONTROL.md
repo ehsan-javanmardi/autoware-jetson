@@ -25,13 +25,13 @@ The last two stages are Pixkit specific:
 | --- | --- |
 | `autoware_raw_vehicle_cmd_converter` | Autoware control command → actuation (throttle, brake, steer) |
 | `pix_hooke_driver` | actuation → CAN frames on `can0` / `can1`, 500 kbit/s |
-| Vehicle dimensions used by planning | [`../VEHICLE.md`](../VEHICLE.md) — 2.54 m × 1.465 m, wheel base 1.9 m, max steer 0.4125 rad |
+| Vehicle dimensions used by planning | `vehicle_info.param.yaml` in the vehicle description package |
 
 > [!WARNING]
 > With `can0` and `can1` up and Autoware running, control frames reach the chassis controller.
 > There is no software interlock between "the stack is running" and "the vehicle can move". Bring
 > CAN up only with the wheels clear or the vehicle on blocks, and the e-stop in reach. See
-> [`../VEHICLE_CAN_AND_RUNTIME.md`](../VEHICLE_CAN_AND_RUNTIME.md).
+> the vehicle interface package in `src/vehicle/`.
 
 To run the stack with no possibility of movement, either leave CAN down or pass
 `launch_vehicle_interface:=false`.
