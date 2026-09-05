@@ -247,6 +247,12 @@ The driver supports CAN (`set_comu_interface(comu_can)`), and this Jetson alread
 converter and its cable entirely — see
 [VEHICLE_CAN_AND_RUNTIME.md](VEHICLE_CAN_AND_RUNTIME.md) for bring-up on this machine.
 
+## Connecting
+
+[SEGWAY_CONNECT.md](SEGWAY_CONNECT.md) covers every route to the chassis — LAN cable,
+WiFi, Tailscale from anywhere — plus how to start and stop the dashboard server and
+drive from a phone.
+
 ## Live dashboard
 
 A read-only web view of everything above lives in
