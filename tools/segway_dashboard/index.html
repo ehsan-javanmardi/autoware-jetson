@@ -2,105 +2,159 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0e1116">
 <title>Segway RMP — Chassis Status</title>
 <style>
   :root {
-    --bg: #0e1116;
-    --panel: #161b22;
-    --panel-2: #1c2430;
-    --line: #2a323d;
-    --ink: #e6edf3;
-    --ink-dim: #9aa7b4;
-    --ink-faint: #6b7885;
-    --ok: #3fb950;
-    --warn: #d29922;
-    --bad: #f85149;
-    --accent: #58a6ff;
-    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --bg:#0e1116; --panel:#161b22; --panel-2:#1c2430; --line:#2a323d;
+    --ink:#e6edf3; --ink-dim:#9aa7b4; --ink-faint:#6b7885;
+    --ok:#3fb950; --warn:#d29922; --bad:#f85149; --accent:#58a6ff;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   }
   @media (prefers-color-scheme: light) {
     :root:not([data-theme="dark"]) {
-      --bg: #f6f8fa; --panel: #ffffff; --panel-2: #f0f3f6; --line: #d8dee4;
-      --ink: #1f2328; --ink-dim: #57606a; --ink-faint: #8c959f;
-      --ok: #1a7f37; --warn: #9a6700; --bad: #cf222e; --accent: #0969da;
+      --bg:#f6f8fa; --panel:#fff; --panel-2:#f0f3f6; --line:#d8dee4;
+      --ink:#1f2328; --ink-dim:#57606a; --ink-faint:#8c959f;
+      --ok:#1a7f37; --warn:#9a6700; --bad:#cf222e; --accent:#0969da;
     }
   }
-  * { box-sizing: border-box; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body {
-    margin: 0; background: var(--bg); color: var(--ink);
-    font-family: var(--sans); font-size: 14px; line-height: 1.5;
-    padding: 24px 20px 48px;
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:var(--sans); font-size:14px; line-height:1.5;
+    padding:20px 16px calc(40px + env(safe-area-inset-bottom));
+    overscroll-behavior: none;
   }
-  .wrap { max-width: 1100px; margin: 0 auto; }
+  .wrap { max-width:1100px; margin:0 auto; }
 
-  header { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; margin-bottom: 4px; }
-  h1 { font-size: 20px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
-  .sub { color: var(--ink-faint); font-size: 13px; }
-  .stamp { margin-left: auto; color: var(--ink-faint); font-size: 12px; font-family: var(--mono); }
+  header { display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; }
+  h1 { font-size:19px; font-weight:600; margin:0; letter-spacing:-.01em; }
+  .sub { color:var(--ink-faint); font-size:13px; }
+  .stamp { margin-left:auto; color:var(--ink-faint); font-size:12px; font-family:var(--mono); }
 
-  /* connection banner */
+  /* tabs */
+  .tabs { display:flex; gap:4px; margin:16px 0 0; border-bottom:1px solid var(--line); }
+  .tab {
+    appearance:none; border:0; background:none; color:var(--ink-dim);
+    font:inherit; font-weight:600; font-size:14px; padding:9px 16px; cursor:pointer;
+    border-bottom:2px solid transparent; margin-bottom:-1px;
+  }
+  .tab[aria-selected="true"] { color:var(--ink); border-bottom-color:var(--accent); }
+  .panel[hidden] { display:none; }
+  .panel { padding-top:18px; }
+
+  /* banner */
   .banner {
-    margin: 18px 0 22px; padding: 16px 18px; border-radius: 10px;
-    border: 1px solid var(--line); background: var(--panel);
-    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    margin-bottom:20px; padding:14px 16px; border-radius:10px;
+    border:1px solid var(--line); background:var(--panel);
+    display:flex; align-items:center; gap:12px; flex-wrap:wrap;
   }
-  .banner.up    { border-color: color-mix(in srgb, var(--ok) 45%, var(--line)); }
-  .banner.down  { border-color: color-mix(in srgb, var(--bad) 45%, var(--line)); }
-  .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
-  .dot.up   { background: var(--ok); box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok) 60%, transparent); animation: pulse 2s infinite; }
-  .dot.down { background: var(--bad); }
+  .banner.up   { border-color: color-mix(in srgb, var(--ok) 45%, var(--line)); }
+  .banner.down { border-color: color-mix(in srgb, var(--bad) 45%, var(--line)); }
+  .dot { width:10px; height:10px; border-radius:50%; flex:none; }
+  .dot.up { background:var(--ok); animation:pulse 2s infinite; }
+  .dot.down { background:var(--bad); }
   @keyframes pulse {
-    0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok) 55%, transparent); }
-    70%  { box-shadow: 0 0 0 9px transparent; }
-    100% { box-shadow: 0 0 0 0 transparent; }
+    0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--ok) 55%,transparent)}
+    70%{box-shadow:0 0 0 9px transparent} 100%{box-shadow:0 0 0 0 transparent}
   }
-  @media (prefers-reduced-motion: reduce) { .dot.up { animation: none; } }
-  .banner-main { font-size: 16px; font-weight: 600; }
-  .banner-meta { color: var(--ink-dim); font-family: var(--mono); font-size: 12.5px; margin-left: auto; }
+  @media (prefers-reduced-motion:reduce){ .dot.up{animation:none} }
+  .banner-main { font-size:15px; font-weight:600; }
+  .banner-meta { color:var(--ink-dim); font-family:var(--mono); font-size:12.5px; margin-left:auto; }
 
-  /* layout */
-  .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
-  .card {
-    background: var(--panel); border: 1px solid var(--line);
-    border-radius: 10px; padding: 16px 18px;
-  }
+  .grid { display:grid; gap:14px; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px 18px; }
   .card h2 {
-    font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
-    color: var(--ink-faint); margin: 0 0 12px;
+    font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--ink-faint); margin:0 0 12px;
   }
-  .span-2 { grid-column: span 2; }
-  @media (max-width: 620px) { .span-2 { grid-column: span 1; } }
+  .big { font-size:30px; font-weight:650; letter-spacing:-.02em; line-height:1.1; }
+  .unit { font-size:15px; font-weight:500; color:var(--ink-dim); margin-left:3px; }
+  .note { color:var(--ink-dim); font-size:12.5px; margin-top:6px; }
+  .bar { height:10px; border-radius:5px; background:var(--panel-2); overflow:hidden; margin:12px 0 4px; }
+  .bar > i { display:block; height:100%; border-radius:5px; transition:width .4s ease, background .4s; }
+  .rows { display:flex; flex-direction:column; gap:9px; }
+  .row { display:flex; justify-content:space-between; align-items:baseline; gap:12px; }
+  .row .k { color:var(--ink-dim); font-size:13px; }
+  .row .v { font-family:var(--mono); font-size:13px; text-align:right; }
+  .chip { display:inline-block; padding:3px 10px; border-radius:999px; font-size:12px; font-weight:600; border:1px solid; }
+  .chip.ok  { color:var(--ok);  border-color:color-mix(in srgb,var(--ok) 40%,transparent);  background:color-mix(in srgb,var(--ok) 12%,transparent); }
+  .chip.warn{ color:var(--warn);border-color:color-mix(in srgb,var(--warn) 40%,transparent);background:color-mix(in srgb,var(--warn) 12%,transparent); }
+  .chip.bad { color:var(--bad); border-color:color-mix(in srgb,var(--bad) 40%,transparent); background:color-mix(in srgb,var(--bad) 12%,transparent); }
+  .chip.mut { color:var(--ink-dim); border-color:var(--line); background:var(--panel-2); }
+  svg.spark { width:100%; height:44px; display:block; margin-top:10px; }
+  .offline { opacity:.45; filter:saturate(.3); }
+  footer { margin-top:24px; color:var(--ink-faint); font-size:12px; }
+  code { font-family:var(--mono); background:var(--panel-2); padding:1px 5px; border-radius:4px; }
 
-  .big { font-size: 30px; font-weight: 650; letter-spacing: -0.02em; line-height: 1.1; }
-  .unit { font-size: 15px; font-weight: 500; color: var(--ink-dim); margin-left: 3px; }
-  .note { color: var(--ink-dim); font-size: 12.5px; margin-top: 6px; }
-
-  /* battery */
-  .bar { height: 10px; border-radius: 5px; background: var(--panel-2); overflow: hidden; margin: 12px 0 4px; }
-  .bar > i { display: block; height: 100%; border-radius: 5px; transition: width .4s ease, background .4s ease; }
-
-  /* rows */
-  .rows { display: flex; flex-direction: column; gap: 9px; }
-  .row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
-  .row .k { color: var(--ink-dim); font-size: 13px; }
-  .row .v { font-family: var(--mono); font-size: 13px; text-align: right; }
-
-  /* chips */
-  .chip {
-    display: inline-block; padding: 3px 10px; border-radius: 999px;
-    font-size: 12px; font-weight: 600; border: 1px solid;
+  /* ---- control tab ---- */
+  .ctl-warn {
+    border:1px solid color-mix(in srgb,var(--warn) 45%,var(--line));
+    background:color-mix(in srgb,var(--warn) 9%,var(--panel));
+    border-radius:10px; padding:14px 16px; margin-bottom:16px;
   }
-  .chip.ok   { color: var(--ok);   border-color: color-mix(in srgb, var(--ok) 40%, transparent);   background: color-mix(in srgb, var(--ok) 12%, transparent); }
-  .chip.warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 40%, transparent); background: color-mix(in srgb, var(--warn) 12%, transparent); }
-  .chip.bad  { color: var(--bad);  border-color: color-mix(in srgb, var(--bad) 40%, transparent);  background: color-mix(in srgb, var(--bad) 12%, transparent); }
-  .chip.mut  { color: var(--ink-dim); border-color: var(--line); background: var(--panel-2); }
+  .ctl-warn b { color:var(--warn); }
 
-  svg.spark { width: 100%; height: 44px; display: block; margin-top: 10px; }
-  .offline { opacity: .45; filter: saturate(.3); transition: opacity .3s; }
-  footer { margin-top: 26px; color: var(--ink-faint); font-size: 12px; }
-  code { font-family: var(--mono); background: var(--panel-2); padding: 1px 5px; border-radius: 4px; }
+  .estop {
+    width:100%; appearance:none; border:0; border-radius:12px; cursor:pointer;
+    background:var(--bad); color:#fff; font:inherit; font-size:17px; font-weight:700;
+    letter-spacing:.02em; padding:18px; margin-bottom:16px; touch-action:manipulation;
+  }
+  .estop:active { filter:brightness(.88); }
+
+  .ctl-grid { display:grid; gap:14px; grid-template-columns:1fr; }
+  @media (min-width:760px){ .ctl-grid { grid-template-columns:340px 1fr; align-items:start; } }
+
+  .enable-row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:14px; }
+  .btn {
+    appearance:none; border:1px solid var(--line); background:var(--panel-2); color:var(--ink);
+    font:inherit; font-weight:600; padding:11px 18px; border-radius:9px; cursor:pointer;
+    touch-action:manipulation;
+  }
+  .btn.primary { background:var(--ok); border-color:var(--ok); color:#04140a; }
+  .btn:disabled { opacity:.45; cursor:not-allowed; }
+
+  /* joystick */
+  .pad-wrap { display:flex; flex-direction:column; align-items:center; }
+  .pad {
+    position:relative; width:min(78vw,300px); aspect-ratio:1; border-radius:50%;
+    background:
+      radial-gradient(circle at 50% 50%, var(--panel-2) 0 62%, transparent 62%),
+      var(--panel);
+    border:1px solid var(--line);
+    touch-action:none; user-select:none; -webkit-user-select:none;
+  }
+  .pad.disabled { opacity:.4; }
+  .pad .cross, .pad .cross-v {
+    position:absolute; background:var(--line);
+  }
+  .pad .cross { left:8%; right:8%; top:50%; height:1px; }
+  .pad .cross-v { top:8%; bottom:8%; left:50%; width:1px; }
+  .knob {
+    position:absolute; width:31%; height:31%; border-radius:50%;
+    left:50%; top:50%; transform:translate(-50%,-50%);
+    background:var(--accent); border:2px solid color-mix(in srgb,var(--accent) 60%, #fff);
+    box-shadow:0 4px 16px rgba(0,0,0,.35);
+    transition:transform .12s ease-out;
+  }
+  .knob.live { transition:none; }
+  .pad-label {
+    position:absolute; font-size:11px; color:var(--ink-faint); font-weight:600;
+    letter-spacing:.06em; text-transform:uppercase;
+  }
+  .pad-label.t { top:8px; left:50%; transform:translateX(-50%); }
+  .pad-label.b { bottom:8px; left:50%; transform:translateX(-50%); }
+  .pad-label.l { left:10px; top:50%; transform:translateY(-50%); }
+  .pad-label.r { right:10px; top:50%; transform:translateY(-50%); }
+
+  .readout { display:flex; gap:20px; justify-content:center; margin-top:14px; font-family:var(--mono); }
+  .readout div { text-align:center; }
+  .readout .n { font-size:20px; font-weight:650; }
+  .readout .l { font-size:11px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.06em; }
+
+  input[type=range] { width:100%; accent-color:var(--accent); height:28px; }
 </style>
 </head>
 <body>
@@ -112,230 +166,376 @@
     <span class="stamp" id="stamp">connecting…</span>
   </header>
 
-  <div class="banner" id="banner">
-    <span class="dot down" id="dot"></span>
-    <span class="banner-main" id="banner-main">Connecting…</span>
-    <span class="banner-meta" id="banner-meta"></span>
+  <div class="tabs" role="tablist">
+    <button class="tab" id="tab-status"  role="tab" aria-selected="true"  aria-controls="panel-status">Status</button>
+    <button class="tab" id="tab-control" role="tab" aria-selected="false" aria-controls="panel-control">Control</button>
   </div>
 
-  <div class="grid" id="grid">
+  <!-- ================= STATUS ================= -->
+  <div class="panel" id="panel-status" role="tabpanel">
+    <div class="banner" id="banner">
+      <span class="dot down" id="dot"></span>
+      <span class="banner-main" id="banner-main">Connecting…</span>
+      <span class="banner-meta" id="banner-meta"></span>
+    </div>
 
-    <div class="card">
-      <h2>Battery</h2>
-      <div><span class="big" id="soc">—</span><span class="unit">%</span></div>
-      <div class="bar"><i id="soc-bar" style="width:0%"></i></div>
-      <div class="rows" style="margin-top:12px">
-        <div class="row"><span class="k">Voltage</span><span class="v" id="volts">—</span></div>
-        <div class="row"><span class="k">Current</span><span class="v" id="amps">—</span></div>
-        <div class="row"><span class="k">Temperature</span><span class="v" id="temp">—</span></div>
-        <div class="row"><span class="k">Charging</span><span class="v" id="charging">—</span></div>
+    <div class="grid" id="grid">
+      <div class="card">
+        <h2>Battery</h2>
+        <div><span class="big" id="soc">—</span><span class="unit">%</span></div>
+        <div class="bar"><i id="soc-bar" style="width:0%"></i></div>
+        <div class="rows" style="margin-top:12px">
+          <div class="row"><span class="k">Voltage</span><span class="v" id="volts">—</span></div>
+          <div class="row"><span class="k">Current</span><span class="v" id="amps">—</span></div>
+          <div class="row"><span class="k">Temperature</span><span class="v" id="temp">—</span></div>
+          <div class="row"><span class="k">Charging</span><span class="v" id="charging">—</span></div>
+        </div>
+        <svg class="spark" id="spark" viewBox="0 0 300 44" preserveAspectRatio="none" aria-hidden="true"></svg>
       </div>
-      <svg class="spark" id="spark" viewBox="0 0 300 44" preserveAspectRatio="none" aria-hidden="true"></svg>
-    </div>
 
-    <div class="card">
-      <h2>Chassis mode</h2>
-      <div class="big" id="mode-name" style="font-size:22px">—</div>
-      <div class="note" id="mode-desc">&nbsp;</div>
-      <div class="rows" style="margin-top:14px">
-        <div class="row"><span class="k">Wheels</span><span class="v" id="wheels">—</span></div>
-        <div class="row"><span class="k">Control source</span><span class="v" id="ctrl-src">—</span></div>
-        <div class="row"><span class="k">Load setting</span><span class="v" id="load">—</span></div>
-        <div class="row"><span class="k">State machine</span><span class="v" id="mode-raw">—</span></div>
+      <div class="card">
+        <h2>Chassis mode</h2>
+        <div class="big" id="mode-name" style="font-size:22px">—</div>
+        <div class="note" id="mode-desc">&nbsp;</div>
+        <div class="rows" style="margin-top:14px">
+          <div class="row"><span class="k">Wheels</span><span class="v" id="wheels">—</span></div>
+          <div class="row"><span class="k">Control source</span><span class="v" id="ctrl-src">—</span></div>
+          <div class="row"><span class="k">Load setting</span><span class="v" id="load">—</span></div>
+          <div class="row"><span class="k">State machine</span><span class="v" id="mode-raw">—</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Odometer</h2>
+        <div><span class="big" id="odo">—</span><span class="unit">m</span></div>
+        <div class="note" id="odo-km">&nbsp;</div>
+        <div class="rows" style="margin-top:14px">
+          <div class="row"><span class="k">Forward limit</span><span class="v" id="lim-fwd">—</span></div>
+          <div class="row"><span class="k">Reverse limit</span><span class="v" id="lim-rev">—</span></div>
+          <div class="row"><span class="k">Angular limit</span><span class="v" id="lim-ang">—</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Link</h2>
+        <div class="rows">
+          <div class="row"><span class="k">Port</span><span class="v" id="port">—</span></div>
+          <div class="row"><span class="k">Baud</span><span class="v" id="baud">—</span></div>
+          <div class="row"><span class="k">Port open</span><span class="v" id="port-open">—</span></div>
+          <div class="row"><span class="k">Chassis replying</span><span class="v" id="replying">—</span></div>
+        </div>
+        <div class="note" id="link-note">&nbsp;</div>
+      </div>
+
+      <div class="card">
+        <h2>Firmware</h2>
+        <div class="rows">
+          <div class="row"><span class="k">Central board</span><span class="v" id="v-central">—</span></div>
+          <div class="row"><span class="k">Motor board</span><span class="v" id="v-motor">—</span></div>
+          <div class="row"><span class="k">Host library</span><span class="v" id="v-host">—</span></div>
+        </div>
+        <div style="margin-top:12px"><span class="chip mut" id="v-match">—</span></div>
+        <div class="note" id="v-match-desc">&nbsp;</div>
+      </div>
+
+      <div class="card">
+        <h2>Error state</h2>
+        <div style="margin-bottom:12px"><span class="chip mut" id="err-chip">—</span></div>
+        <div class="rows" id="err-rows"></div>
       </div>
     </div>
+  </div>
 
-    <div class="card">
-      <h2>Odometer</h2>
-      <div><span class="big" id="odo">—</span><span class="unit">m</span></div>
-      <div class="note" id="odo-km">&nbsp;</div>
-      <div class="rows" style="margin-top:14px">
-        <div class="row"><span class="k">Forward limit</span><span class="v" id="lim-fwd">—</span></div>
-        <div class="row"><span class="k">Reverse limit</span><span class="v" id="lim-rev">—</span></div>
-        <div class="row"><span class="k">Angular limit</span><span class="v" id="lim-ang">—</span></div>
+  <!-- ================= CONTROL ================= -->
+  <div class="panel" id="panel-control" role="tabpanel" hidden>
+
+    <div class="ctl-warn" id="ctl-unavailable" hidden>
+      <b>Control is disabled.</b> The server was started read-only. Restart it with
+      <code>--allow-control</code> to drive.
+    </div>
+
+    <div id="ctl-body">
+      <button class="estop" id="estop">■ STOP — release &amp; disable</button>
+
+      <div class="ctl-grid">
+        <div class="card">
+          <h2>Drive state</h2>
+          <div class="enable-row">
+            <button class="btn primary" id="btn-enable">Enable</button>
+            <button class="btn" id="btn-disable">Disable</button>
+          </div>
+          <div class="rows">
+            <div class="row"><span class="k">Motors</span><span class="v" id="c-enabled">—</span></div>
+            <div class="row"><span class="k">Chassis mode</span><span class="v" id="c-mode">—</span></div>
+            <div class="row"><span class="k">Wheels</span><span class="v" id="c-wheels">—</span></div>
+            <div class="row"><span class="k">Deadman</span><span class="v" id="c-deadman">—</span></div>
+          </div>
+          <div class="note" id="c-hint">&nbsp;</div>
+
+          <h2 style="margin-top:20px">Speed limit</h2>
+          <input type="range" id="speed" min="10" max="100" value="40" step="5">
+          <div class="rows" style="margin-top:6px">
+            <div class="row"><span class="k">Max forward</span><span class="v" id="s-lin">—</span></div>
+            <div class="row"><span class="k">Max turn</span><span class="v" id="s-ang">—</span></div>
+          </div>
+        </div>
+
+        <div class="card pad-wrap">
+          <h2 style="align-self:flex-start">Joystick — hold to drive</h2>
+          <div class="pad disabled" id="pad">
+            <div class="cross"></div><div class="cross-v"></div>
+            <span class="pad-label t">fwd</span>
+            <span class="pad-label b">rev</span>
+            <span class="pad-label l">left</span>
+            <span class="pad-label r">right</span>
+            <div class="knob" id="knob"></div>
+          </div>
+          <div class="readout">
+            <div><div class="n" id="r-lin">0.00</div><div class="l">m/s</div></div>
+            <div><div class="n" id="r-ang">0.00</div><div class="l">rad/s</div></div>
+          </div>
+          <div class="note" style="text-align:center">Releasing the knob stops the chassis immediately.</div>
+        </div>
       </div>
     </div>
-
-    <div class="card">
-      <h2>Link</h2>
-      <div class="rows">
-        <div class="row"><span class="k">Port</span><span class="v" id="port">—</span></div>
-        <div class="row"><span class="k">Baud</span><span class="v" id="baud">—</span></div>
-        <div class="row"><span class="k">Port open</span><span class="v" id="port-open">—</span></div>
-        <div class="row"><span class="k">Chassis replying</span><span class="v" id="replying">—</span></div>
-      </div>
-      <div class="note" id="link-note">&nbsp;</div>
-    </div>
-
-    <div class="card">
-      <h2>Firmware</h2>
-      <div class="rows">
-        <div class="row"><span class="k">Central board</span><span class="v" id="v-central">—</span></div>
-        <div class="row"><span class="k">Motor board</span><span class="v" id="v-motor">—</span></div>
-        <div class="row"><span class="k">Host library</span><span class="v" id="v-host">—</span></div>
-      </div>
-      <div style="margin-top:12px"><span class="chip mut" id="v-match">—</span></div>
-      <div class="note" id="v-match-desc">&nbsp;</div>
-    </div>
-
-    <div class="card">
-      <h2>Error state</h2>
-      <div style="margin-bottom:12px"><span class="chip mut" id="err-chip">—</span></div>
-      <div class="rows" id="err-rows"></div>
-    </div>
-
   </div>
 
   <footer>
-    Read-only view — this dashboard never sends motion commands.
-    Values polled from the vendor SDK via <code>/api/status</code>.
+    Status polls <code>/api/status</code>. Control posts to <code>/api/cmd_vel</code>,
+    <code>/api/enable</code> and <code>/api/estop</code>.
   </footer>
-
 </div>
 
 <script>
 const $ = id => document.getElementById(id);
-const history = [];   // battery millivolts, for the sparkline
+const hist = [];
 const MAX_POINTS = 120;
+let control = { available:false, enabled:false };
 
-function fmtInt(n) { return n == null ? "—" : n.toLocaleString(); }
+/* ---------- tabs ---------- */
+function selectTab(name) {
+  const isStatus = name === "status";
+  $("tab-status").setAttribute("aria-selected", isStatus);
+  $("tab-control").setAttribute("aria-selected", !isStatus);
+  $("panel-status").hidden = !isStatus;
+  $("panel-control").hidden = isStatus;
+  if (isStatus) stopDrive();          // never leave a command running on tab switch
+}
+$("tab-status").onclick  = () => selectTab("status");
+$("tab-control").onclick = () => selectTab("control");
 
+/* ---------- status rendering ---------- */
 function socColor(soc) {
   const s = getComputedStyle(document.documentElement);
   if (soc <= 15) return s.getPropertyValue("--bad");
   if (soc <= 35) return s.getPropertyValue("--warn");
   return s.getPropertyValue("--ok");
 }
-
-function modeClass(raw) {
-  if (raw === 1) return "ok";            // vehicle control
-  if (raw === 4) return "bad";           // error
-  return "warn";                          // lock / pushing / e-stop
-}
-
 function drawSpark(values) {
   const svg = $("spark");
   if (values.length < 2) { svg.innerHTML = ""; return; }
-  const min = Math.min(...values), max = Math.max(...values);
-  const span = (max - min) || 1;
+  const min = Math.min(...values), max = Math.max(...values), span = (max - min) || 1;
   const step = 300 / (values.length - 1);
-  const pts = values.map((v, i) => `${(i * step).toFixed(1)},${(40 - ((v - min) / span) * 34).toFixed(1)}`);
+  const pts = values.map((v,i) => `${(i*step).toFixed(1)},${(40-((v-min)/span)*34).toFixed(1)}`);
   const stroke = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim();
-  svg.innerHTML =
-    `<polyline fill="none" stroke="${stroke}" stroke-width="1.6"
-       stroke-linejoin="round" stroke-linecap="round" points="${pts.join(" ")}"/>`;
-}
-
-function setOffline(reason) {
-  $("banner").className = "banner down";
-  $("dot").className = "dot down";
-  $("banner-main").textContent = "Chassis not responding";
-  $("banner-meta").textContent = reason || "";
-  $("grid").classList.add("offline");
+  svg.innerHTML = `<polyline fill="none" stroke="${stroke}" stroke-width="1.6"
+    stroke-linejoin="round" stroke-linecap="round" points="${pts.join(" ")}"/>`;
 }
 
 function render(d) {
-  const link = d.link || {};
-  const responding = !!link.chassis_responding;
-
+  const link = d.link || {}, responding = !!link.chassis_responding;
   $("stamp").textContent = new Date().toLocaleTimeString();
   $("grid").classList.toggle("offline", !responding);
 
-  // banner
-  if (responding) {
-    $("banner").className = "banner up";
-    $("dot").className = "dot up";
-    $("banner-main").textContent = "Connected — chassis replying";
-  } else {
-    $("banner").className = "banner down";
-    $("dot").className = "dot down";
-    $("banner-main").textContent = link.port_open
-      ? "Port open, but chassis not replying"
-      : "Serial port not open";
-  }
-  $("banner-meta").textContent = d.error
-    ? d.error
-    : `${link.port || "—"} @ ${link.baud || "—"} baud`;
+  $("banner").className = "banner " + (responding ? "up" : "down");
+  $("dot").className = "dot " + (responding ? "up" : "down");
+  $("banner-main").textContent = responding ? "Connected — chassis replying"
+    : (link.port_open ? "Port open, but chassis not replying" : "Serial port not open");
+  $("banner-meta").textContent = d.error || `${link.port||"—"} @ ${link.baud||"—"} baud`;
 
-  // link card
   $("port").textContent = link.port || "—";
   $("baud").textContent = link.baud || "—";
-  $("port-open").innerHTML = link.port_open
-    ? '<span class="chip ok">yes</span>' : '<span class="chip bad">no</span>';
-  $("replying").innerHTML = responding
-    ? '<span class="chip ok">yes</span>' : '<span class="chip bad">no</span>';
-  $("link-note").textContent = responding
-    ? "" : "A version of 0xFFFF means the chassis sent no reply.";
+  $("port-open").innerHTML = link.port_open ? '<span class="chip ok">yes</span>' : '<span class="chip bad">no</span>';
+  $("replying").innerHTML  = responding ? '<span class="chip ok">yes</span>' : '<span class="chip bad">no</span>';
+  $("link-note").textContent = responding ? "" : "A version of 0xFFFF means the chassis sent no reply.";
 
-  if (!responding) return;   // stale numbers would be misleading
+  renderControl(d);
+  if (!responding) return;
 
-  // battery
   const b = d.battery || {};
   $("soc").textContent = b.soc ?? "—";
   const bar = $("soc-bar");
-  bar.style.width = Math.max(0, Math.min(100, b.soc || 0)) + "%";
-  bar.style.background = socColor(b.soc || 0);
-  $("volts").textContent = b.millivolts != null ? (b.millivolts / 1000).toFixed(2) + " V" : "—";
-  $("amps").textContent  = b.milliamps != null ? (b.milliamps / 1000).toFixed(2) + " A" : "—";
-  $("temp").textContent  = b.temperature != null ? b.temperature + " °C" : "—";
-  $("charging").innerHTML = b.charging
-    ? '<span class="chip ok">charging</span>' : '<span class="chip mut">no</span>';
+  bar.style.width = Math.max(0, Math.min(100, b.soc||0)) + "%";
+  bar.style.background = socColor(b.soc||0);
+  $("volts").textContent = b.millivolts!=null ? (b.millivolts/1000).toFixed(2)+" V" : "—";
+  $("amps").textContent  = b.milliamps!=null ? (b.milliamps/1000).toFixed(2)+" A" : "—";
+  $("temp").textContent  = b.temperature!=null ? b.temperature+" °C" : "—";
+  $("charging").innerHTML = b.charging ? '<span class="chip ok">charging</span>' : '<span class="chip mut">no</span>';
+  if (b.millivolts) { hist.push(b.millivolts); if (hist.length>MAX_POINTS) hist.shift(); drawSpark(hist); }
 
-  if (b.millivolts) {
-    history.push(b.millivolts);
-    if (history.length > MAX_POINTS) history.shift();
-    drawSpark(history);
-  }
-
-  // mode
   const m = d.mode || {};
   $("mode-name").textContent = m.name || "—";
-  $("mode-name").style.color = `var(--${modeClass(m.raw) === "ok" ? "ok" : modeClass(m.raw) === "bad" ? "bad" : "warn"})`;
+  $("mode-name").style.color = m.raw===1 ? "var(--ok)" : m.raw===4 ? "var(--bad)" : "var(--warn)";
   $("mode-desc").textContent = m.description || "";
   $("wheels").textContent = m.wheels || "—";
   $("ctrl-src").textContent = m.control_source || "—";
   $("load").textContent = m.load_state || "—";
-  $("mode-raw").textContent = m.raw != null ? `mode ${m.raw}` : "—";
+  $("mode-raw").textContent = m.raw!=null ? `mode ${m.raw}` : "—";
 
-  // odometry + limits
-  const o = d.odometry || {}, l = d.limits || {};
-  $("odo").textContent = fmtInt(o.meters);
-  $("odo-km").textContent = o.meters != null ? (o.meters / 1000).toFixed(2) + " km total" : "";
-  $("lim-fwd").textContent = l.forward_max != null ? l.forward_max + " m/h" : "—";
-  $("lim-rev").textContent = l.backward_max != null ? l.backward_max + " m/h" : "—";
-  $("lim-ang").textContent = l.angular_max != null ? l.angular_max + " mrad/s" : "—";
+  const o = d.odometry||{}, l = d.limits||{};
+  $("odo").textContent = o.meters!=null ? o.meters.toLocaleString() : "—";
+  $("odo-km").textContent = o.meters!=null ? (o.meters/1000).toFixed(2)+" km total" : "";
+  $("lim-fwd").textContent = l.forward_max!=null ? l.forward_max+" m/h" : "—";
+  $("lim-rev").textContent = l.backward_max!=null ? l.backward_max+" m/h" : "—";
+  $("lim-ang").textContent = l.angular_max!=null ? l.angular_max+" mrad/s" : "—";
 
-  // firmware
-  const v = d.versions || {};
-  $("v-central").textContent = v.central || "—";
-  $("v-motor").textContent = v.motor || "—";
-  $("v-host").textContent = v.host || "—";
+  const v = d.versions||{};
+  $("v-central").textContent = v.central||"—";
+  $("v-motor").textContent = v.motor||"—";
+  $("v-host").textContent = v.host||"—";
   const chip = $("v-match");
-  chip.textContent = v.match || "—";
-  chip.className = "chip " + (v.match === "match" ? "ok" : v.match === "timeout" ? "bad" : "warn");
-  $("v-match-desc").textContent = v.match_description || "";
+  chip.textContent = v.match||"—";
+  chip.className = "chip " + (v.match==="match" ? "ok" : v.match==="timeout" ? "bad" : "warn");
+  $("v-match-desc").textContent = v.match_description||"";
 
-  // errors
-  const errs = d.errors || {};
+  const errs = d.errors||{};
   $("err-chip").textContent = d.any_error ? "faults present" : "no faults";
   $("err-chip").className = "chip " + (d.any_error ? "bad" : "ok");
-  $("err-rows").innerHTML = Object.entries(errs).map(([k, val]) => {
+  $("err-rows").innerHTML = Object.entries(errs).map(([k,val]) => {
     const clean = /^0x0+$/.test(val);
-    return `<div class="row"><span class="k">${k.replace(/_/g, " ")}</span>
-            <span class="v" style="color:var(--${clean ? "ink-dim" : "bad"})">${val}</span></div>`;
+    return `<div class="row"><span class="k">${k.replace(/_/g," ")}</span>
+      <span class="v" style="color:var(--${clean?"ink-dim":"bad"})">${val}</span></div>`;
   }).join("");
 }
 
-async function poll() {
-  try {
-    const r = await fetch("/api/status", { cache: "no-store" });
-    render(await r.json());
-  } catch (e) {
-    setOffline("dashboard server unreachable");
-    $("stamp").textContent = "no server";
-  }
+/* ---------- control ---------- */
+function renderControl(d) {
+  control = d.control || { available:false };
+  const avail = !!control.available;
+  $("ctl-unavailable").hidden = avail;
+  $("ctl-body").hidden = !avail;
+  if (!avail) return;
+
+  const m = d.mode || {};
+  $("c-enabled").innerHTML = control.enabled
+    ? '<span class="chip ok">enabled</span>' : '<span class="chip mut">disabled</span>';
+  $("c-mode").textContent = m.name || "—";
+  $("c-wheels").textContent = m.wheels || "—";
+  $("c-deadman").innerHTML = control.timed_out
+    ? '<span class="chip warn">tripped</span>'
+    : `<span class="chip mut">${control.client_timeout_s}s</span>`;
+
+  let hint = "";
+  if (m.raw === 3) hint = "E-stop is engaged — release the hardware button before enabling.";
+  else if (m.raw === 4) hint = "Chassis is in error mode. Clear the fault first.";
+  else if (control.timed_out) hint = "Deadman tripped: no command reached the server in time. Re-enable to continue.";
+  else if (!control.enabled) hint = "Press Enable, then hold the joystick to drive.";
+  $("c-hint").textContent = hint;
+
+  $("btn-enable").disabled = control.enabled || m.raw === 3 || m.raw === 4;
+  $("btn-disable").disabled = !control.enabled;
+  $("pad").classList.toggle("disabled", !control.enabled);
+
+  if (!control.enabled && !dragging) resetKnob();
+  updateLimitLabels();
 }
 
+function updateLimitLabels() {
+  const f = +$("speed").value / 100;
+  const ml = (control.max_linear ?? 0) * f, ma = (control.max_angular ?? 0) * f;
+  $("s-lin").textContent = ml.toFixed(2) + " m/s";
+  $("s-ang").textContent = ma.toFixed(2) + " rad/s";
+  return { ml, ma };
+}
+$("speed").addEventListener("input", updateLimitLabels);
+
+async function post(path, body) {
+  try {
+    const r = await fetch(path, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body || {}),
+    });
+    return await r.json();
+  } catch (e) { return { ok:false, error:String(e) }; }
+}
+
+$("btn-enable").onclick  = () => post("/api/enable", { on:true });
+$("btn-disable").onclick = () => { stopDrive(); post("/api/enable", { on:false }); };
+$("estop").onclick       = () => { stopDrive(); post("/api/estop"); };
+
+/* joystick */
+const pad = $("pad"), knob = $("knob");
+let dragging = false, vec = { x:0, y:0 }, txTimer = null;
+
+function resetKnob() {
+  vec = { x:0, y:0 };
+  knob.classList.remove("live");
+  knob.style.transform = "translate(-50%,-50%)";
+  $("r-lin").textContent = "0.00";
+  $("r-ang").textContent = "0.00";
+}
+
+function updateFromPoint(clientX, clientY) {
+  const r = pad.getBoundingClientRect();
+  const cx = r.left + r.width/2, cy = r.top + r.height/2;
+  const radius = r.width/2 * 0.68;
+  let dx = clientX - cx, dy = clientY - cy;
+  const dist = Math.hypot(dx, dy);
+  if (dist > radius) { dx *= radius/dist; dy *= radius/dist; }
+  vec = { x: dx/radius, y: -dy/radius };          // y up = forward
+  knob.classList.add("live");
+  knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+  const { ml, ma } = updateLimitLabels();
+  $("r-lin").textContent = (vec.y*ml).toFixed(2);
+  $("r-ang").textContent = (-vec.x*ma).toFixed(2);
+}
+
+function sendVel() {
+  const { ml, ma } = updateLimitLabels();
+  post("/api/cmd_vel", { linear: vec.y*ml, angular: -vec.x*ma });   // +z = left
+}
+
+function startDrive(e) {
+  if (!control.enabled) return;
+  dragging = true;
+  pad.setPointerCapture?.(e.pointerId);
+  updateFromPoint(e.clientX, e.clientY);
+  sendVel();
+  clearInterval(txTimer);
+  txTimer = setInterval(sendVel, 100);           // 10 Hz, inside the 400ms deadman
+}
+function moveDrive(e) { if (dragging) { updateFromPoint(e.clientX, e.clientY); } }
+function stopDrive() {
+  if (txTimer) { clearInterval(txTimer); txTimer = null; }
+  if (dragging) { dragging = false; post("/api/cmd_vel", { linear:0, angular:0 }); }
+  resetKnob();
+}
+
+pad.addEventListener("pointerdown", startDrive);
+pad.addEventListener("pointermove", moveDrive);
+pad.addEventListener("pointerup", stopDrive);
+pad.addEventListener("pointercancel", stopDrive);
+pad.addEventListener("pointerleave", e => { if (dragging) stopDrive(); });
+pad.addEventListener("contextmenu", e => e.preventDefault());
+
+/* stop on anything that means the operator lost the controls */
+window.addEventListener("blur", stopDrive);
+document.addEventListener("visibilitychange", () => { if (document.hidden) stopDrive(); });
+window.addEventListener("pagehide", stopDrive);
+
+/* ---------- poll ---------- */
+async function poll() {
+  try {
+    const r = await fetch("/api/status", { cache:"no-store" });
+    render(await r.json());
+  } catch (e) {
+    $("banner").className = "banner down";
+    $("dot").className = "dot down";
+    $("banner-main").textContent = "Dashboard server unreachable";
+    $("stamp").textContent = "no server";
+    stopDrive();
+  }
+}
 poll();
 setInterval(poll, 500);
 </script>

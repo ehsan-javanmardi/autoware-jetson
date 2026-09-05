@@ -1,10 +1,11 @@
 # Segway RMP dashboard
 
 A live web view of the Segway RMP chassis — connection state, battery, mode, odometry,
-firmware versions and per-board error codes.
+firmware versions and per-board error codes — plus an optional touch **Control** tab for
+driving it from a phone or tablet.
 
-**Read-only.** The server calls only the SDK's status getters, never `set_cmd_vel()` or
-`set_enable_ctrl()`, so it cannot command motion.
+**Read-only by default.** Without `--allow-control` the server never binds
+`set_cmd_vel()` or `set_enable_ctrl()` at all, so it has no callable path to motion.
 
 ![layout](https://img.shields.io/badge/stack-python%20stdlib%20only-blue)
 
@@ -46,7 +47,12 @@ copy in this repo would hide upstream changes.
 ## Running
 
 ```bash
+# read-only dashboard
 sudo ./server.py --lib /home/tlab/workspace/segway_ros2/segwayrmp/lib/libctrl_arm64-v8a.so
+
+# with the Control tab enabled
+sudo ./server.py --lib /home/tlab/workspace/segway_ros2/segwayrmp/lib/libctrl_arm64-v8a.so \
+    --allow-control --max-linear 0.4 --max-angular 0.6
 ```
 
 To leave it running after you disconnect:
@@ -69,6 +75,9 @@ Options:
 | `--serial` | `ttyUSB0` | Device name under `/dev` |
 | `--port` | `8080` | HTTP port |
 | `--host` | `0.0.0.0` | Bind address; use `127.0.0.1` to keep it local |
+| `--allow-control` | *off* | Expose the motion endpoints and the Control tab |
+| `--max-linear` | `0.5` | Linear speed cap, m/s |
+| `--max-angular` | `0.8` | Angular speed cap, rad/s |
 
 ### Why root
 
@@ -79,6 +88,43 @@ the `dialout` group is still worth having, but it is not sufficient on its own.
 If you would rather not run it as root, the alternative is a passwordless sudoers entry
 for those two commands — not set up here.
 
+## Driving from a phone or tablet
+
+Start with `--allow-control`, open `http://<jetson-ip>:8080/` on the device, and switch
+to the **Control** tab.
+
+1. **Release the hardware E-stop.** While it is engaged the chassis reports mode 3 and
+   shields both speed and enable commands — the UI says so and keeps Enable disabled.
+2. **Press Enable.** This calls `set_enable_ctrl(1)`; the chassis moves from lock mode
+   into vehicle control mode.
+3. **Hold the joystick.** Up is forward, left/right turns. The knob springs back to
+   centre on release and a zero command is sent immediately.
+
+### Safety design
+
+Driving a robot over WiFi from a browser fails in specific ways, so there are four
+independent layers that stop the chassis:
+
+| Layer | Behaviour |
+|---|---|
+| Chassis firmware | Declares communication failure and leaves control mode if it gets no command for **150 ms** (manual, `set_cmd_vel`). This is the backstop and needs no cooperation from us. |
+| Server deadman | If no client command arrives for **400 ms**, the server zeroes the target, calls `set_enable_ctrl(0)`, and marks the deadman tripped. Covers a dropped phone, a locked screen, a dead WiFi link. |
+| Browser | Releasing the knob, switching tabs, backgrounding the page, or losing the server all send zero and stop the transmit loop. |
+| Speed caps | `--max-linear` / `--max-angular` clamp **server-side**, so a malformed or hostile POST cannot exceed them. The slider only scales within that cap. |
+
+The transmit rates are layered deliberately: the browser posts at 10 Hz, the server
+retransmits to the chassis at 20 Hz, and the chassis gives up at 150 ms. Each layer is
+faster than the one it protects.
+
+The red **STOP** button zeroes velocity and drops the enable. It is a software stop —
+**it is not a substitute for the hardware E-stop**, which is the only thing that cuts
+motor power.
+
+### Before the first drive
+
+Wheels off the ground, or a clear space with the hardware E-stop in reach. Start with
+`--max-linear 0.2` to confirm the direction conventions before opening it up.
+
 ## JSON API
 
 `GET /api/status` returns the full snapshot, refreshed twice a second by a background
@@ -87,6 +133,17 @@ thread. Useful for scripting or feeding another tool:
 ```bash
 curl -s localhost:8080/api/status | jq .battery
 ```
+
+With `--allow-control`, three POST endpoints exist. Each returns JSON:
+
+```bash
+curl -X POST localhost:8080/api/enable  -d '{"on":true}'
+curl -X POST localhost:8080/api/cmd_vel -d '{"linear":0.2,"angular":0.0}'
+curl -X POST localhost:8080/api/estop
+```
+
+`cmd_vel` must be repeated inside the 400 ms deadman window or the chassis is disabled.
+Without `--allow-control` all three return HTTP 403.
 
 ```json
 {
