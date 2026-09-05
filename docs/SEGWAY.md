@@ -59,13 +59,18 @@ stack all work. There were **no USB errors** — no `error -71`, no descriptor-r
 failure, no over-current. That is the signature of a connection that is *electrically
 absent*, not one that is failing to negotiate.
 
-Ranked causes:
+Ranked causes, after testing:
 
-1. **The mini-USB cable is charge-only or has broken data lines.** Very common with
-   mini-USB. A charge-only cable would give exactly this: nothing on the bus.
-2. **The mini-USB connector is loose or intermittent.** Mini-USB retention is weak and
-   wears out; the 5-second window looks like a connection that seated briefly.
-3. Converter lost power.
+1. **The converter is dead or unpowered.** If it draws power from the RMP side rather
+   than from USB, a chassis that has slept or dropped that rail would take the converter
+   off the bus exactly like this. Check the converter's power LED.
+2. **The USB port or hub.** The converter was on `1-4.2`, behind the Realtek hub. Try a
+   port directly on the Jetson.
+3. ~~The mini-USB cable.~~ **Tested and largely ruled out** — two different cables were
+   tried on 2026-09-05, both producing zero kernel events.
+
+**Still untested:** whether any *other* USB device (flash drive, mouse) enumerates in
+that same port. That single test separates cause 1 from cause 2 and should be done next.
 
 A merely *flaky* cable usually shows repeated connect/disconnect cycles or enumeration
 errors. One clean connect, one clean disconnect, then silence points at the cable or
