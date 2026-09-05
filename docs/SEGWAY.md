@@ -2,8 +2,8 @@
 
 Notes for driving the Segway chassis from the Jetson AGX Orin.
 
-State as of 2026-09-05. **The serial link has not yet been verified** — see
-[Current status](#current-status) for what is blocking it.
+State as of 2026-09-05. **The link is not working** — the USB-serial converter drops off
+the bus. See [Current status](#current-status).
 
 ## References
 
@@ -12,108 +12,113 @@ State as of 2026-09-05. **The serial link has not yet been verified** — see
 - [`adeeb10abbas/segway_ros2`](https://github.com/adeeb10abbas/segway_ros2)
   — ROS 2 driver. The low-level code is on the **`segway_rmp` branch**, not `main`.
 
-## Hardware
+## Hardware and connection path
 
 | | |
 |---|---|
 | Chassis | Segway RMP Plus 401, part `14 P01R POLUS` |
 | Host | NVIDIA Jetson AGX Orin Developer Kit |
 | L4T | R36.5.0 (JetPack 6), kernel `5.15.185-tegra` |
-| Link | TX / RX / GND on the 40-pin header (no USB-serial adapter present) |
 
-## Serial ports on this Jetson
-
-The chassis is wired to the 40-pin header, so it lands on a Tegra hardware UART
-(`ttyTHS*`), not a `ttyUSB*`. `lsusb` shows no USB-serial adapter, which confirms this.
+The chassis is **not** wired to the 40-pin header. The path is:
 
 ```
-/dev/ttyTHS1  ->  3100000.serial   (UARTA)
-/dev/ttyTHS2  ->  3110000.serial   (UARTB)
+RMP chassis  --TX/RX/GND-->  converter board (per manual)  --mini-USB-->  USB  -->  Jetson
 ```
 
-**No console conflict.** On many Jetson setups a getty holds the 40-pin UART and fights
-the robot for the port. Not the case here — the serial consoles are on other ports:
+The converter is an **FTDI FT232RL**. When present it enumerates as `/dev/ttyUSB0`,
+behind the Realtek hub at USB path `1-4.2`. The `ftdi_sio` driver is already in the
+kernel and binds automatically — no driver install is needed.
 
-```
-console=ttyTCU0,115200 console=ttyAMA0,115200   # /proc/cmdline
-serial-getty@ttyTCU0 / @ttyAMA0 / @ttyGS0       # running
-```
-
-Nothing is bound to `ttyTHS1` or `ttyTHS2`, so no `systemctl disable` step is needed.
+Because the converter handles the level conversion, the Jetson's 3.3 V header pins are
+not involved and `ttyTHS*` is irrelevant here.
 
 ## Current status
 
-**Not communicating.** The port opens and the Jetson UART is healthy, but the chassis
-sends nothing. Tested 2026-09-05.
+**The converter does not stay connected.** It enumerated correctly once, then dropped
+after five seconds and never returned.
 
-### What was fixed
+From `dmesg`, on the current boot:
 
-`tlab` was not in `dialout`, so the ports could not be opened at all. Fixed:
+```
+[ 197.767] usb 1-4.2: new full-speed USB device number 4 using tegra-xusb
+[ 197.947] usb 1-4.2: Detected FT232RL
+[ 197.951] FTDI USB Serial Device converter now attached to ttyUSB0
+[ 202.791] usb 1-4.2: USB disconnect, device number 4
+[ 202.794] ftdi_sio 1-4.2:1.0: device disconnected
+```
+
+After `t=202 s` there are **no further USB events**, across nearly three hours of
+uptime. A 90-second replug watch produced nothing: no enumeration, no error, no
+device-present signal at all. `/sys/bus/usb/devices/` shows the hub `1-4` with no child.
+
+### What this means
+
+The five seconds of clean operation prove the converter, its FTDI chip, and the driver
+stack all work. There were **no USB errors** — no `error -71`, no descriptor-read
+failure, no over-current. That is the signature of a connection that is *electrically
+absent*, not one that is failing to negotiate.
+
+Ranked causes:
+
+1. **The mini-USB cable is charge-only or has broken data lines.** Very common with
+   mini-USB. A charge-only cable would give exactly this: nothing on the bus.
+2. **The mini-USB connector is loose or intermittent.** Mini-USB retention is weak and
+   wears out; the 5-second window looks like a connection that seated briefly.
+3. Converter lost power.
+
+A merely *flaky* cable usually shows repeated connect/disconnect cycles or enumeration
+errors. One clean connect, one clean disconnect, then silence points at the cable or
+connector rather than at the converter or the Jetson.
+
+### Next steps
+
+1. **Swap the mini-USB cable** for a known-good data cable. This is the single most
+   likely fix.
+2. Watch enumeration live while plugging in:
+
+   ```bash
+   sudo dmesg -w | grep -iE 'usb|ftdi|ttyUSB'
+   ```
+
+   Expect `Detected FT232RL` then `attached to ttyUSB0` within a second.
+3. Try a different USB port — preferably a direct Jetson port rather than through the
+   Realtek hub, to take the hub out of the picture.
+4. Confirm the port survives: `ls /dev/ttyUSB0` a minute after plugging in.
+
+## Verifying the link
+
+Once `/dev/ttyUSB0` is stable, listen **passively** first. The chassis may stream
+feedback on its own; if bytes arrive, the wiring and baud are right. This sends nothing
+to the robot, so it cannot cause motion.
+
+```bash
+for baud in 115200 230400 460800 921600; do
+  stty -F /dev/ttyUSB0 $baud raw -echo
+  n=$(timeout 2 cat /dev/ttyUSB0 | wc -c)
+  echo "$baud: $n bytes"
+done
+```
+
+- **Steady framing at one baud** — link good, note that baud.
+- **Bytes at every baud, all garbage** — wrong baud, or TX/RX swapped at the converter.
+- **Zero bytes** — check TX/RX are crossed (chassis TX → converter RX), grounds common,
+  chassis powered and out of E-stop. Some RMP firmware also stays silent until the host
+  sends a heartbeat; that means writing to a powered base, so resolve the wiring first.
+
+The baud rate is **not documented in the driver source** — it is computed inside a
+closed prebuilt library (see below). Confirm it from the manual or empirically; do not
+assume 115200.
+
+### Permissions
+
+`tlab` was not in `dialout`, which would have blocked port access independently of the
+cable fault. Fixed 2026-09-05:
 
 ```bash
 sudo usermod -aG dialout tlab      # done; re-login for it to apply to your shell
+id -nG | grep dialout              # confirm
 ```
-
-### What was measured
-
-Passive listen on both UARTs, 2 s each, four baud rates — **zero bytes everywhere**:
-
-```
-ttyTHS1 @ 115200/230400/460800/921600 :  0 bytes
-ttyTHS2 @ 115200/230400/460800/921600 :  0 bytes
-```
-
-Holding `ttyTHS1` open for 5 s, the interrupt counter for `3100000.serial` did **not
-move** (stayed at 2), and the only bytes ever captured were `00 00`:
-
-```
-112:   2   GICv3 144 Level  3100000.serial     # before and after 5 s of listening
-$ xxd /tmp/ths1.bin
-00000000: 0000                                 ..
-```
-
-Two null bytes with no interrupt activity is the signature of a **break condition or a
-floating/idle-low RX line**, not data. Nothing is driving the Jetson's RX pin.
-
-### What this rules in and out
-
-- **Not a permissions problem** — fixed, ports now open.
-- **Not a console conflict** — consoles are on `ttyTCU0`/`ttyAMA0`/`ttyGS0`.
-- **Not a disabled UART** — `serial@3100000` and `serial@3110000` are both `status=okay`,
-  and the IRQ registers when the port is opened.
-- **The port is the right one.** `UART1_TX_PR2` / `UART1_RX_PR3` is controller
-  `serial@3100000` = `/dev/ttyTHS1`, which is 40-pin header **pin 8 (TX)** and
-  **pin 10 (RX)**. Use `ttyTHS1`.
-
-### Prime suspect: signal levels
-
-The Jetson 40-pin UART is **3.3 V TTL**. If the RMP's serial port is **RS-232**
-(±12 V, typical of a DB9 on this class of chassis), then wiring TX/RX/GND straight to
-the header will not communicate — and can damage the Jetson pin. **Confirm the chassis
-serial voltage in the manual before applying power to that link again.** If it is
-RS-232, an isolating transceiver (MAX3232-based) or a USB-RS232 adapter is required.
-
-### Next steps, in order
-
-1. **Loopback-test the Jetson UART.** Power down, jumper header **pin 8 to pin 10**
-   (nothing else), then:
-
-   ```bash
-   stty -F /dev/ttyTHS1 115200 raw -echo
-   (timeout 2 cat /dev/ttyTHS1 | xxd &) ; sleep 0.3 ; printf 'PING' > /dev/ttyTHS1 ; sleep 2
-   ```
-
-   `PING` echoed back proves the UART, pinmux and wiring path are all fine, and moves
-   the fault to the robot side. Nothing echoed means the problem is on the Jetson.
-
-2. **Check the RMP serial voltage level** in the manual (see Prime suspect above).
-
-3. **Confirm TX/RX are crossed** — Jetson TX (pin 8) → chassis RX, Jetson RX (pin 10)
-   → chassis TX. A straight-through pairing is silent in exactly this way.
-
-4. **Only then** consider whether the chassis needs a host request before it will talk.
-   Some RMP firmware stays silent until the host sends a heartbeat. That means writing
-   to a powered base, so resolve items 1-3 first.
 
 ## ROS 2 driver
 
@@ -132,12 +137,13 @@ set_comu_interface(comu_serial);   // or comu_can
 init_control_ctrl();
 ```
 
-Set `segwaySmartCarSerial` to `ttyTHS1` — the default `ttyUSB0` does not exist here.
+The default `ttyUSB0` matches this setup, so no parameter override is needed — provided
+the converter stays enumerated and is the only USB-serial device attached.
 
 Feedback topics come from `segway_msgs`: `BmsFb` (battery), `ChassisModeFb`, `SpeedFb`,
 `TicksFb` (encoders), `ErrorCodeFb`, `MotorWorkModeFb`, `ChassisMileageMeterFb`.
-Control is via services — `RosSetChassisEnableCmd` (enable motors),
-`RosSetVelMaxCmd`, `RosSetChassisPoweroffCmd`, and the rotate/buzzer commands.
+Control is via services — `RosSetChassisEnableCmd` (enable motors), `RosSetVelMaxCmd`,
+`RosSetChassisPoweroffCmd`, and the rotate/buzzer commands.
 
 ### Two caveats before relying on this driver
 
@@ -155,9 +161,9 @@ differs from the 220, there is no source-level fix.
 ### CAN as an alternative
 
 The driver supports CAN (`set_comu_interface(comu_can)`), and this Jetson already has
-`can0`/`can1` (currently `DOWN`). If the UART proves troublesome, CAN is a supported
-path — see [VEHICLE_CAN_AND_RUNTIME.md](VEHICLE_CAN_AND_RUNTIME.md) for bring-up on
-this machine.
+`can0`/`can1` (currently `DOWN`). If the USB link stays unreliable, CAN avoids the
+converter and its cable entirely — see
+[VEHICLE_CAN_AND_RUNTIME.md](VEHICLE_CAN_AND_RUNTIME.md) for bring-up on this machine.
 
 ## Safety
 
