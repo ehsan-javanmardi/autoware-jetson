@@ -1,7 +1,19 @@
-# Pixkit Autoware
+# Autoware on Jetson
 
-Autoware workspace adapted for the **[Pixkit 3.0](https://www.pixmoving.com/pixkit)** research vehicle
-equipped with a Velodyne VLP LiDAR.
+Autoware workspace for running on an **NVIDIA Jetson AGX Orin**, driving a
+**[Segway RMP Plus 401](docs/SEGWAY.md)** mobile base.
+
+It began as an Autoware tree adapted for the
+[Pixkit 3.0](https://www.pixmoving.com/pixkit) research vehicle, and most of what
+follows still describes that lineage — the vehicle interface committed in `src/` is
+still `pix_hooke_driver`, and the sensor kit is still the Pixkit one. What has changed
+is the host: an Orin on JetPack, not an x86 desktop with a discrete GPU. That changes
+the install, so **install with [`install-jetson.sh`](install-jetson.sh)** and read
+[`docs/JETSON_INSTALL.md`](docs/JETSON_INSTALL.md) before following the generic
+instructions below.
+
+Segway bring-up is in progress and is tracked in [`docs/SEGWAY.md`](docs/SEGWAY.md);
+no Segway ROS 2 driver is in `src/` yet.
 
 This is an **upstream Autoware source tree with the Pixkit vehicle and sensor integration merged in**.
 Everything upstream Autoware does still applies; this file documents only what is specific to this
@@ -25,12 +37,17 @@ workspace. The original upstream README is preserved as
 
 | | |
 | --- | --- |
+| Host | NVIDIA Jetson AGX Orin Developer Kit (`aarch64`) |
+| L4T | R36.x (JetPack 6), kernel `5.15.185-tegra` |
 | OS | Ubuntu 22.04 LTS |
 | ROS | ROS 2 Humble |
 | RMW | CycloneDDS (`rmw_cyclonedds_cpp`) |
-| CUDA | 12.8 (`nvcc` 12.8.93) |
-| TensorRT | 10.1.0.27 |
-| cuDNN | 8.4.1.50 |
+| CUDA | 12.6 (`nvcc` 12.6.68) — from JetPack, at `/usr/local/cuda` |
+| TensorRT | 10.3.0.30-1+cuda12.5 — from JetPack |
+
+The NVIDIA stack comes from JetPack and is versioned with L4T. Do not install CUDA,
+cuDNN or TensorRT from NVIDIA's generic Ubuntu repositories on this machine; see
+[`docs/JETSON_INSTALL.md`](docs/JETSON_INSTALL.md).
 
 > [!IMPORTANT]
 > **Version caveat.** The Pixkit extensions were authored against **Autoware 0.45.1**, but are merged
@@ -136,6 +153,23 @@ Nine packages were overwritten in place by the Pixkit versions (same paths, so n
   `autoware_sensing_msgs`, `tf2`, `tf2_eigen` and `tf2_ros`, none of which were declared in
   `package.xml`. colcon only exposes declared dependencies to a package's build, so it configured
   successfully only while a Debian copy of `autoware_sensing_msgs` happened to be installed.
+- **`casadi` pinned to 3.7.2** in [`ansible/roles/acados/defaults/main.yaml`](ansible/roles/acados/defaults/main.yaml).
+  The role installed it unpinned, so pip fetched 3.8.0, whose aarch64 wheel is built against GCC 13
+  and needs `GLIBCXX_3.4.32`. Ubuntu 22.04 provides at most `GLIBCXX_3.4.30`, so `import casadi`
+  raised an `ImportError` naming libstdc++, and every acados code-generation step failed with it —
+  `autoware_path_optimizer` first. This is arm64-visible but not arm64-specific; the same wheel
+  boundary applies on x86 22.04.
+- **`cuda_blackboard` built against CUDA 12.6.** `CudaMemPoolContext`'s constructor called
+  `cudaStreamGetDevice()`, which NVIDIA introduced in **CUDA 12.8**; JetPack 6 for the Orin ships
+  **12.6**, and a Jetson's toolkit is versioned with L4T rather than chosen independently, so the
+  call had to go rather than the toolkit be upgraded. It is now `#if CUDART_VERSION >= 12080`
+  guarded, falling back to `cudaGetDevice()`. The two are equivalent at that point in the
+  constructor: the stream is created by the preceding `cudaStreamCreateWithFlags()`, which binds it
+  to the current device. Without this, `cuda_blackboard` fails to compile and takes the seven
+  packages that depend on it with it — `autoware_bevfusion`, `autoware_lidar_transfusion`,
+  `autoware_lidar_centerpoint`, `autoware_lidar_frnet`, `autoware_ptv3`,
+  `autoware_ground_segmentation_cuda` and `autoware_cuda_pointcloud_preprocessor`, i.e. the whole
+  CUDA perception stack. The guard is a no-op on CUDA 12.8 and later.
 - **`autoware_kashiwa.sh` rewritten**, and split into three named launchers. The upstream copy
   hardcoded `/home/autoware/pixkit_autoware_0.45.1/...`. They now resolve the workspace from their
   own location, take the map directory as an optional first argument, and fail with a clear message
@@ -146,15 +180,20 @@ Nine packages were overwritten in place by the Pixkit versions (same paths, so n
 
 ## Install and build
 
-Ubuntu 22.04 with ROS 2 Humble. Roughly 40 minutes of build time and 30 GB of disk
-(`build/` alone is ~4.5 GB).
+Ubuntu 22.04 with ROS 2 Humble, and about 40 GB of disk (`build/` alone is ~4.5 GB).
+Budget roughly 40 minutes of build time on an 8-core x86 desktop, or two to three hours
+on the Jetson AGX Orin at `--parallel-workers 4`.
 
 ### 1. Clone
 
 ```bash
-git clone git@github.com:ehsan-javanmardi/pix_autoware.git
-cd pix_autoware
+git clone git@github.com:ehsan-javanmardi/autoware-jetson.git
+cd autoware-jetson
 ```
+
+The x86 / Pixkit tree this was forked from is
+[`ehsan-javanmardi/pix_autoware`](https://github.com/ehsan-javanmardi/pix_autoware), configured
+here as the `upstream` remote.
 
 `src/` is committed in this repository, so **there is no `vcs import` step**. Every package is
 already at the revision recorded in
@@ -162,8 +201,23 @@ already at the revision recorded in
 
 ### 2. Prerequisites
 
-Installed by the standard Autoware Ansible playbook (see the
-[source installation guide](https://autowarefoundation.github.io/autoware-documentation/main/installation/autoware/source-installation/)):
+> [!IMPORTANT]
+> **On the Jetson, run [`install-jetson.sh`](install-jetson.sh) instead of the three
+> commands below**, and skip straight past steps 3 to 5 — the script covers them too.
+>
+> ```bash
+> bash install-jetson.sh 2>&1 | tee ~/autoware-jetson-install.log
+> ```
+>
+> The generic playbook's `cuda` role treats every non-x86 host as SBSA: it adds
+> NVIDIA's server-ARM apt repository and installs `nvidia-open`, a discrete-GPU driver,
+> over the L4T driver stack that JetPack installed. The `tensorrt` role does the
+> equivalent to TensorRT. `install-jetson.sh` skips both, verifies JetPack's versions
+> are actually present, and isolates two further roles that cannot work on a `-tegra`
+> kernel. [`docs/JETSON_INSTALL.md`](docs/JETSON_INSTALL.md) explains each deviation.
+
+On an x86 host, the standard Autoware Ansible playbook installs the prerequisites (see
+the [source installation guide](https://autowarefoundation.github.io/autoware-documentation/main/installation/autoware/source-installation/)):
 
 ```bash
 bash ansible/scripts/install-ansible.sh
@@ -413,6 +467,8 @@ Everything written for this vehicle lives in [`docs/`](docs/):
 | [`docs/SENSORS.md`](docs/SENSORS.md) | Index of the sensors on this vehicle, the sensor LAN address map, and a page per sensor under [`docs/sensors/`](docs/sensors) covering its addressing, configuration files, topics and frames. |
 | [`docs/V2X.md`](docs/V2X.md) | Accepting vehicles reported over V2X as detected objects: the `use_v2x_objects` flag, why they need a topic of their own, and how to see them. The V2X stack itself is a separate workspace. |
 | [`docs/MAPS.md`](docs/MAPS.md) | The maps in `autoware_map/`, what each file is for, and what to check before adding another one. |
+| [`docs/JETSON_INSTALL.md`](docs/JETSON_INSTALL.md) | Installing on the Jetson AGX Orin: which Ansible roles would install the wrong NVIDIA stack over JetPack's and why they are skipped, what `install-jetson.sh` does in each of its nine stages, and how to resume a failed one. |
+| [`docs/SEGWAY.md`](docs/SEGWAY.md) | Driving the Segway RMP Plus 401 base from the Orin: the USB-serial path and converter, the current state of the link, how to probe the chassis read-only, and the safety rules for a powered base. |
 | [`docs/SETUP_STATE.md`](docs/SETUP_STATE.md) | Setup state and handover notes: what is configured, what is not, and where each subsystem stands. Read this first when resuming work. |
 | [`docs/VEHICLE_CAN_AND_RUNTIME.md`](docs/VEHICLE_CAN_AND_RUNTIME.md) | CAN bring-up and the runtime picture from a real launch: interfaces, topics, and what has to be running before autonomy engages. |
 | [`docs/RTK_ICHIMILL_SETUP.md`](docs/RTK_ICHIMILL_SETUP.md) | RTK corrections over SoftBank ichimill, both the `str2str` relay and the receiver's built-in NTRIP client. |
