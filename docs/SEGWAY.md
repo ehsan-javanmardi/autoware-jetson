@@ -35,57 +35,53 @@ not involved and `ttyTHS*` is irrelevant here.
 
 ## Current status
 
-**Serial link is up. The chassis does not transmit unsolicited.** Tested 2026-09-05.
-
-### Connection resolved
-
-The port now enumerates and stays stable:
-
-```
-Bus 001 Device 006: ID 10c4:ea60 Silicon Labs CP210x UART Bridge
-[15:24:03] usb 1-4.2: cp210x converter now attached to ttyUSB0
-```
-
-Note this is a **CP2102**, a different converter from the **FT232RL** seen earlier at
-12:17 — that one enumerated for five seconds and never returned. Two cables were tried
-against the FTDI with no effect; the working setup uses the CP210x. Whether the FTDI
-unit is faulty is untested.
-
-`/dev/ttyUSB0` held for 10 s with no dropout, which the FTDI never managed.
-
-### The chassis does not respond
-
-Confirmed by running the vendor SDK's own connect path (read-only probe, no motion
-commands — see [Probing the chassis](#probing-the-chassis)):
+**Working.** The chassis communicates over serial and reports live telemetry.
+Verified 2026-09-05.
 
 ```
 serial open success! serial port:/dev/ttyUSB0, baud:921600
-Obtaining the chassis firmware version number timed out
-init_control_ctrl() -> 0  (ok)
 
-  host_version      : 0x2027      <- the SDK's own version, not the chassis
-  central_version   : 0xffff      <- no reply
-  motor_version     : 0xffff      <- no reply
-  bat_soc           : 0 %
-  bat_mvol          : 0 mV
-  version_matched   : 0xffff      <- 0xffff = "get chassis version overtime"
+  host_version      : 0x2027      <- the SDK library
+  central_version   : 0x2028      <- chassis central board, replying
+  motor_version     : 0x2028      <- motor board, replying
+  chassis_mode      : 3           <- emergency stop mode
+  work_model        : 0           <- wheels unpowered
+  bat_soc           : 53 %
+  bat_mvol          : 37080 mV    <- 37.1 V on a 36 V pack
+  vehicle_meter     : 2977 m
+  err_state(Central): 0x00000000  <- no faults
+  version_matched   : 0x0002      <- host library older than chassis firmware
 ```
 
-The port opens and the host transmits, but **every value that must come from the
-chassis is absent**. `0xffff` is the SDK's explicit no-reply sentinel. Passive listening
-at 921600 also returned zero bytes.
+`0xFFFF` on any version field means no reply; anything else means the chassis is
+answering. See [Probing the chassis](#probing-the-chassis) to re-test.
 
-So: the Jetson side works end to end, and the chassis is not answering.
+### Two things to know about this state
 
-### Baud rate: 921600
-
-Settled empirically — the SDK prints it on open:
+**The E-stop is engaged.** `chassis_mode: 3` is emergency-stop mode and `work_model: 0`
+means the wheels have no power. This is the safe resting state, not a fault — note
+`err_state` is clean. Per Appendix 1, the sequence to motion is:
 
 ```
-serial open success! serial port:/dev/ttyUSB0, baud:921600
+E-stop released      -> mode 0 (lock mode)
+enable command sent  -> mode 1 (vehicle control mode)   <- wheels live
 ```
 
-This is hard-coded in `libctrl_arm64-v8a.so` and not configurable through the API.
+**The SDK library is older than the chassis firmware.** `version_matched: 0x0002` is the
+SDK's "host version older" code (`0x2027` vs `0x2028`), and it prints
+`host firmware version is older!`. Basic telemetry and control work regardless, but
+newer chassis features may not be exposed. This is expected — the library shipped with
+the RMP220 driver, not with the 401.
+
+### How it was fixed
+
+The link was dead until the chassis wiring was corrected against the manual's pinout
+(below). The Jetson side needed only the `dialout` group fix; the converter, cable, port
+and driver stack were all fine once the chassis wires were right.
+
+Diagnostic history, for reference: an FT232RL enumerated for 5 s then vanished and never
+returned across two cable swaps; a CP2102 was substituted and has been stable since.
+Whether the FTDI unit is faulty was never established.
 
 ### Connector pinout (manual, Appendix 3)
 
