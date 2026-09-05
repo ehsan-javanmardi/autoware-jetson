@@ -35,61 +35,57 @@ not involved and `ttyTHS*` is irrelevant here.
 
 ## Current status
 
-**The converter does not stay connected.** It enumerated correctly once, then dropped
-after five seconds and never returned.
+**Serial link is up. The chassis does not transmit unsolicited.** Tested 2026-09-05.
 
-From `dmesg`, on the current boot:
+### Connection resolved
+
+The port now enumerates and stays stable:
 
 ```
-[ 197.767] usb 1-4.2: new full-speed USB device number 4 using tegra-xusb
-[ 197.947] usb 1-4.2: Detected FT232RL
-[ 197.951] FTDI USB Serial Device converter now attached to ttyUSB0
-[ 202.791] usb 1-4.2: USB disconnect, device number 4
-[ 202.794] ftdi_sio 1-4.2:1.0: device disconnected
+Bus 001 Device 006: ID 10c4:ea60 Silicon Labs CP210x UART Bridge
+[15:24:03] usb 1-4.2: cp210x converter now attached to ttyUSB0
 ```
 
-After `t=202 s` there are **no further USB events**, across nearly three hours of
-uptime. A 90-second replug watch produced nothing: no enumeration, no error, no
-device-present signal at all. `/sys/bus/usb/devices/` shows the hub `1-4` with no child.
+Note this is a **CP2102**, a different converter from the **FT232RL** seen earlier at
+12:17 — that one enumerated for five seconds and never returned. Two cables were tried
+against the FTDI with no effect; the working setup uses the CP210x. Whether the FTDI
+unit is faulty is untested.
 
-### What this means
+`/dev/ttyUSB0` held for 10 s with no dropout, which the FTDI never managed.
 
-The five seconds of clean operation prove the converter, its FTDI chip, and the driver
-stack all work. There were **no USB errors** — no `error -71`, no descriptor-read
-failure, no over-current. That is the signature of a connection that is *electrically
-absent*, not one that is failing to negotiate.
+### But the chassis is silent
 
-Ranked causes, after testing:
+Passive listen on `/dev/ttyUSB0`, 2 s per rate — **zero bytes at every baud**:
 
-1. **The converter is dead or unpowered.** If it draws power from the RMP side rather
-   than from USB, a chassis that has slept or dropped that rail would take the converter
-   off the bus exactly like this. Check the converter's power LED.
-2. **The USB port or hub.** The converter was on `1-4.2`, behind the Realtek hub. Try a
-   port directly on the Jetson.
-3. ~~The mini-USB cable.~~ **Tested and largely ruled out** — two different cables were
-   tried on 2026-09-05, both producing zero kernel events.
+```
+115200 / 230400 / 460800 / 921600 / 57600 / 9600  ->  0 bytes
+```
 
-**Still untested:** whether any *other* USB device (flash drive, mouse) enumerates in
-that same port. That single test separates cause 1 from cause 2 and should be done next.
+Modem lines read `CTS: low, DSR: low, CD: low`. That is expected here and **not** a
+fault — only TX/RX/GND are wired, so the handshake lines are simply absent.
 
-A merely *flaky* cable usually shows repeated connect/disconnect cycles or enumeration
-errors. One clean connect, one clean disconnect, then silence points at the cable or
-connector rather than at the converter or the Jetson.
+### Interpretation
 
-### Next steps
+The RMP does not appear to stream feedback on its own; it needs the host to initiate.
+This matches the SDK design, where `init_control_ctrl()` opens the port and starts a
+comms thread rather than merely listening.
 
-1. **Swap the mini-USB cable** for a known-good data cable. This is the single most
-   likely fix.
-2. Watch enumeration live while plugging in:
+Remaining unknowns, in the order they should be resolved:
 
-   ```bash
-   sudo dmesg -w | grep -iE 'usb|ftdi|ttyUSB'
-   ```
+1. **Does the chassis need a host request?** Likely. Confirming means writing to a
+   powered mobile base — see Safety before doing it.
+2. **Are TX and RX crossed correctly?** Converter TX → chassis RX, converter RX →
+   chassis TX. Silence looks identical either way, so this cannot be ruled out from
+   software.
+3. **What baud does the 401 use?** Not in the driver source; it is computed inside the
+   closed library. Get it from the manual.
 
-   Expect `Detected FT232RL` then `attached to ttyUSB0` within a second.
-3. Try a different USB port — preferably a direct Jetson port rather than through the
-   Realtek hub, to take the hub out of the picture.
-4. Confirm the port survives: `ls /dev/ttyUSB0` a minute after plugging in.
+### Toolchain on this machine
+
+**ROS 2 is not installed** (`/opt/ros` does not exist), so the `segway_ros2` driver
+cannot be built or launched here yet. `gcc` is available, so the vendor SDK
+(`libctrl_arm64-v8a.so`, aarch64) can be linked directly from a small C program for a
+first handshake test without a full ROS 2 install.
 
 ## Verifying the link
 
