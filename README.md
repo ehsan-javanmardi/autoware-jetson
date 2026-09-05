@@ -332,6 +332,9 @@ Local modifications:
 - **`COLCON_IGNORE`** on `yabloc_image_processing` — needs OpenCV contrib's `ximgproc`,
   absent from JetPack's OpenCV 4.8.0 build and not installable beside it. Costs YabLoc
   camera localization, which needs a camera this vehicle does not have.
+- **`yabloc_image_processing` exec_depend dropped** from `tier4_localization_launch` —
+  colcon skips any package with an unavailable declared dependency, so the ignore above
+  otherwise cascades to `tier4_simulator_launch` and then `autoware_launch` itself.
 - **`casadi` pinned to 3.7.2** — 3.8.0's aarch64 wheel needs `GLIBCXX_3.4.32` (GCC 13);
   jammy provides at most 3.4.30, so every acados codegen step failed at `import casadi`.
 - **`cuda_blackboard` guarded for CUDA 12.6** — `cudaStreamGetDevice()` arrived in CUDA

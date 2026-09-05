@@ -14,8 +14,9 @@
 #   END_STAGE         last stage to run (default 9). Stages 6 and 7 are the only ones
 #                     that need root, so END_STAGE=7 runs the part that must be typed
 #                     at a terminal with a sudo password, and START_STAGE=8 the rest.
-#   PARALLEL_WORKERS  colcon parallelism (default 4 — the Orin runs out of RAM
-#                     long before it runs out of cores)
+#   PARALLEL_WORKERS  colcon parallelism (default 6). Measured on this Orin: 6 workers
+#                     peak around 6 GB of the 29 GB available, so memory is not the
+#                     limit it is on smaller Jetsons. Lower it if a job is OOM-killed.
 #   DATA_DIR          where the playbook puts ONNX models (default ~/autoware_data/ml_models)
 #
 # Stages:
@@ -27,7 +28,7 @@ set -euo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 START_STAGE="${START_STAGE:-1}"
 END_STAGE="${END_STAGE:-9}"
-PARALLEL_WORKERS="${PARALLEL_WORKERS:-4}"
+PARALLEL_WORKERS="${PARALLEL_WORKERS:-6}"
 DATA_DIR="${DATA_DIR:-$HOME/autoware_data/ml_models}"
 ROSDISTRO=humble
 
@@ -140,8 +141,12 @@ if stage 1 "Pre-flight"; then
 
     # build/ alone reaches ~4.5 GB, and the ONNX artifacts add several more.
     avail_gb=$(df -BG --output=avail "$REPO" | tail -1 | tr -dc '0-9')
-    if [ "$avail_gb" -lt 40 ]; then
-        warn "only ${avail_gb} GB free on this filesystem; the install wants ~40 GB"
+    # Measured on a full run: build/ 5.2 GB, install/ 405 MB, ONNX artifacts 3.7 GB,
+    # plus ROS 2 and the apt dependencies. ~25 GB is comfortable; the 40 GB in the x86
+    # README counts a lot that is already on a JetPack image.
+    if [ "$avail_gb" -lt 25 ]; then
+        warn "only ${avail_gb} GB free on this filesystem; the install needs ~15 GB and
+  wants headroom beyond that for ccache"
     else
         ok "${avail_gb} GB free"
     fi

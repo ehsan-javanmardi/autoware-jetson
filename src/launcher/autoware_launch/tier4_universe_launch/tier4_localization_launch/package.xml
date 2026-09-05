@@ -35,7 +35,10 @@
   <exec_depend>eagleye_rt</exec_depend>
   <exec_depend>topic_tools</exec_depend>
   <exec_depend>yabloc_common</exec_depend>
-  <exec_depend>yabloc_image_processing</exec_depend>
+  <!-- yabloc_image_processing is COLCON_IGNOREd on the Jetson: it needs OpenCV contrib's
+       ximgproc, which JetPack's OpenCV does not ship. Declaring it here would make colcon
+       skip this package, and with it tier4_simulator_launch and autoware_launch.
+       See "Local modifications" in README.md and docs/INSTALL.md. -->
   <exec_depend>yabloc_monitor</exec_depend>
   <exec_depend>yabloc_particle_filter</exec_depend>
   <exec_depend>yabloc_pose_initializer</exec_depend>
