@@ -253,7 +253,8 @@ A read-only web view of everything above lives in
 [`tools/segway_dashboard/`](../tools/segway_dashboard/):
 
 ```bash
-sudo tools/segway_dashboard/server.py --lib /path/to/libctrl_arm64-v8a.so
+sudo tools/segway_dashboard/server.py \
+  --lib /home/tlab/workspace/segway_ros2/segwayrmp/lib/libctrl_arm64-v8a.so
 # then open http://<jetson-ip>:8080/
 ```
 

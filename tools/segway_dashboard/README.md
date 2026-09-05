@@ -37,11 +37,26 @@ rather than showing stale numbers.
 The library is **not vendored here** — it is a third-party binary blob, and pinning a
 copy in this repo would hide upstream changes.
 
+**On this Jetson it is already installed at:**
+
+```
+/home/tlab/workspace/segway_ros2/segwayrmp/lib/libctrl_arm64-v8a.so
+```
+
 ## Running
 
 ```bash
-sudo ./server.py --lib /path/to/libctrl_arm64-v8a.so
+sudo ./server.py --lib /home/tlab/workspace/segway_ros2/segwayrmp/lib/libctrl_arm64-v8a.so
 ```
+
+To leave it running after you disconnect:
+
+```bash
+sudo setsid nohup ./server.py --lib <path> >/dev/null 2>&1 < /dev/null &
+```
+
+Discarding stdout matters — the SDK prints `host firmware version is older!` on a loop
+(see Notes), which will fill a log file otherwise.
 
 Then open <http://localhost:8080/>, or from another machine on the LAN,
 `http://<jetson-ip>:8080/` (it binds all interfaces by default).
