@@ -42,7 +42,17 @@ CHASSIS_MODE = {
     3: ("Emergency stop", "E-stop engaged, wheels unpowered"),
     4: ("Error", "Unrecoverable fault, see error state"),
 }
-CTRL_SRC = {0: "Remote control", 1: "Host computer"}
+# get_ctrl_cmd_src(): the manual documents only 0 and 1, but the chassis returns other
+# values in practice, so the raw number is always surfaced alongside the label.
+CTRL_SRC = {0: "RC handset", 1: "Host computer", 2: "Host computer", 3: "None"}
+
+# Who is allowed to drive. The chassis itself only distinguishes RC from host, so the
+# split between teleop and Autoware is arbitrated here, on the host, not by the chassis.
+CONTROL_MODES = {
+    "rc": ("RC handset", "The physical remote controller drives. The host sends nothing."),
+    "teleop": ("Teleop", "The web joystick drives, from this dashboard."),
+    "autoware": ("Autoware", "An autonomous ROS 2 stack drives. Not yet wired up."),
+}
 WORK_MODEL = {0: "Wheels unpowered", 1: "Wheels powered"}
 LOAD_STATE = {0: "No load", 1: "Full load"}
 VERSION_MATCH = {
@@ -115,6 +125,7 @@ class Sdk:
     def read(self):
         lib = self.lib
         central = lib.get_chassis_central_version()
+        src = lib.get_ctrl_cmd_src()
         mode_raw = lib.get_chassis_mode()
         mode_name, mode_desc = CHASSIS_MODE.get(mode_raw, ("Unknown", f"Undocumented value {mode_raw}"))
         match_raw = lib.check_version_matched_with_fw()
@@ -133,7 +144,8 @@ class Sdk:
                 "name": mode_name,
                 "description": mode_desc,
                 "wheels": WORK_MODEL.get(lib.get_chassis_work_model(), "Unknown"),
-                "control_source": CTRL_SRC.get(lib.get_ctrl_cmd_src(), "Unknown"),
+                "control_source": CTRL_SRC.get(src, f"Undocumented ({src})"),
+                "control_source_raw": src,
                 "load_state": LOAD_STATE.get(lib.get_chassis_load_state(), "Unknown"),
             },
             "battery": {
@@ -181,6 +193,29 @@ class Controller:
         self.last_client_ms = 0.0
         self.timed_out = False
         self.last_error = None
+        # Start in "rc": the host must be asked, explicitly, before it drives anything.
+        self.mode = "rc"
+
+    def set_mode(self, mode):
+        """Hand control to the RC handset, this dashboard, or an autonomous stack.
+
+        Leaving teleop always stops and disables first — switching source is exactly the
+        moment a stale velocity would be dangerous.
+        """
+        if mode not in CONTROL_MODES:
+            return None
+        with self.lock:
+            if mode != self.mode:
+                self.linear = self.angular = 0.0
+                if self.enabled:
+                    try:
+                        self.sdk.lib.set_cmd_vel(0.0, 0.0)
+                        self.sdk.lib.set_enable_ctrl(0)
+                    except Exception as exc:
+                        self.last_error = str(exc)
+                    self.enabled = False
+                self.mode = mode
+            return self.mode
 
     def start(self):
         threading.Thread(target=self._loop, daemon=True).start()
@@ -190,6 +225,8 @@ class Controller:
 
     def set_target(self, linear, angular):
         with self.lock:
+            if self.mode != "teleop":
+                return None                      # only teleop drives from the web
             self.linear = self._clamp(linear, self.max_linear)
             self.angular = self._clamp(angular, self.max_angular)
             self.last_client_ms = time.monotonic()
@@ -198,6 +235,8 @@ class Controller:
 
     def set_enabled(self, on):
         with self.lock:
+            if on and self.mode != "teleop":
+                return None                      # cannot enable from the web unless teleop
             self.linear = self.angular = 0.0
             self.last_client_ms = time.monotonic()
             try:
@@ -248,6 +287,10 @@ class Controller:
         with self.lock:
             return {
                 "available": True,
+                "mode": self.mode,
+                "mode_name": CONTROL_MODES[self.mode][0],
+                "mode_description": CONTROL_MODES[self.mode][1],
+                "modes": {k: {"name": v[0], "description": v[1]} for k, v in CONTROL_MODES.items()},
                 "enabled": self.enabled,
                 "linear": round(self.linear, 3),
                 "angular": round(self.angular, 3),
@@ -339,10 +382,23 @@ def make_handler(state, controller):
                                         "error": "control disabled; start the server with --allow-control"})
             body = self._body()
             if path == "/api/cmd_vel":
-                lin, ang = controller.set_target(body.get("linear", 0.0), body.get("angular", 0.0))
-                self._json(200, {"ok": True, "linear": lin, "angular": ang})
+                r = controller.set_target(body.get("linear", 0.0), body.get("angular", 0.0))
+                if r is None:
+                    return self._json(409, {"ok": False, "error": "not in teleop mode",
+                                            "mode": controller.mode})
+                self._json(200, {"ok": True, "linear": r[0], "angular": r[1]})
+            elif path == "/api/mode":
+                m = controller.set_mode(body.get("mode"))
+                if m is None:
+                    return self._json(400, {"ok": False, "error": "unknown mode",
+                                            "valid": list(CONTROL_MODES)})
+                self._json(200, {"ok": True, "mode": m})
             elif path == "/api/enable":
-                self._json(200, {"ok": True, "enabled": controller.set_enabled(bool(body.get("on")))})
+                r = controller.set_enabled(bool(body.get("on")))
+                if r is None:
+                    return self._json(409, {"ok": False, "error": "not in teleop mode",
+                                            "mode": controller.mode})
+                self._json(200, {"ok": True, "enabled": r})
             elif path == "/api/estop":
                 controller.estop()
                 self._json(200, {"ok": True, "enabled": False})

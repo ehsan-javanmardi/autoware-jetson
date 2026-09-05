@@ -93,11 +93,23 @@ for those two commands — not set up here.
 Start with `--allow-control`, open `http://<jetson-ip>:8080/` on the device, and switch
 to the **Control** tab.
 
-1. **Release the hardware E-stop.** While it is engaged the chassis reports mode 3 and
+1. **Pick who is driving.** The Control tab has a three-way selector:
+
+   | Mode | Who drives | Notes |
+   |---|---|---|
+   | **RC handset** | The physical remote controller | Default on startup. The host sends nothing. |
+   | **Teleop** | The web joystick on this dashboard | The only mode in which `/api/cmd_vel` and `/api/enable` do anything. |
+   | **Autoware** | An autonomous ROS 2 stack | Reserved. No driver is wired up yet, so nothing will drive. |
+
+   The chassis itself only distinguishes RC from host (`get_ctrl_cmd_src`), so the split
+   between Teleop and Autoware is arbitrated **on the host**, not by the chassis.
+   Switching mode always sends a zero velocity and drops the enable first.
+
+2. **Release the hardware E-stop.** While it is engaged the chassis reports mode 3 and
    shields both speed and enable commands — the UI says so and keeps Enable disabled.
-2. **Press Enable.** This calls `set_enable_ctrl(1)`; the chassis moves from lock mode
+3. **Press Enable.** This calls `set_enable_ctrl(1)`; the chassis moves from lock mode
    into vehicle control mode.
-3. **Hold the joystick.** Up is forward, left/right turns. The knob springs back to
+4. **Hold the joystick.** Up is forward, left/right turns. The knob springs back to
    centre on release and a zero command is sent immediately.
 
 ### Safety design
@@ -137,13 +149,16 @@ curl -s localhost:8080/api/status | jq .battery
 With `--allow-control`, three POST endpoints exist. Each returns JSON:
 
 ```bash
+curl -X POST localhost:8080/api/mode    -d '{"mode":"teleop"}'
 curl -X POST localhost:8080/api/enable  -d '{"on":true}'
 curl -X POST localhost:8080/api/cmd_vel -d '{"linear":0.2,"angular":0.0}'
 curl -X POST localhost:8080/api/estop
 ```
 
-`cmd_vel` must be repeated inside the 400 ms deadman window or the chassis is disabled.
-Without `--allow-control` all three return HTTP 403.
+`cmd_vel` must be repeated inside the 400 ms deadman window or the chassis is disabled —
+the client transmits continuously while enabled, sending zeros when the joystick is idle,
+not only while it is being dragged. `cmd_vel` and `enable` return HTTP 409 outside teleop
+mode. Without `--allow-control` all four return HTTP 403.
 
 ```json
 {

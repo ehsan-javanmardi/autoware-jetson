@@ -105,6 +105,18 @@
   .estop:active { filter:brightness(.88); }
   .estop-note { color:var(--ink-dim); font-size:12.5px; margin:-8px 0 18px; text-align:center; }
 
+  .modes { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+  .mode-btn {
+    appearance:none; border:1px solid var(--line); background:var(--panel-2); color:var(--ink-dim);
+    font:inherit; font-weight:600; font-size:13.5px; padding:12px 6px; border-radius:9px;
+    cursor:pointer; touch-action:manipulation;
+  }
+  .mode-btn[aria-pressed="true"] {
+    background:color-mix(in srgb,var(--accent) 16%,transparent);
+    border-color:var(--accent); color:var(--accent);
+  }
+  .mode-btn:disabled { opacity:.4; cursor:not-allowed; }
+
   .ctl-grid { display:grid; gap:14px; grid-template-columns:1fr; }
   @media (min-width:760px){ .ctl-grid { grid-template-columns:340px 1fr; align-items:start; } }
 
@@ -256,6 +268,16 @@
     </div>
 
     <div id="ctl-body">
+      <div class="card" style="margin-bottom:16px">
+        <h2>Who is driving</h2>
+        <div class="modes" id="modes">
+          <button class="mode-btn" data-mode="rc">RC handset</button>
+          <button class="mode-btn" data-mode="teleop">Teleop</button>
+          <button class="mode-btn" data-mode="autoware">Autoware</button>
+        </div>
+        <div class="note" id="mode-note">&nbsp;</div>
+      </div>
+
       <button class="estop" id="estop">STOP</button>
       <div class="estop-note">Software stop — zeroes speed and drops the enable. The <b>hardware E-stop</b> is the only thing that cuts motor power.</div>
 
@@ -380,7 +402,8 @@ function render(d) {
   $("mode-name").style.color = m.raw===1 ? "var(--ok)" : m.raw===4 ? "var(--bad)" : "var(--warn)";
   $("mode-desc").textContent = m.description || "";
   $("wheels").textContent = m.wheels || "—";
-  $("ctrl-src").textContent = m.control_source || "—";
+  $("ctrl-src").textContent = m.control_source_raw != null
+    ? `${m.control_source} (${m.control_source_raw})` : (m.control_source || "—");
   $("load").textContent = m.load_state || "—";
   $("mode-raw").textContent = m.raw!=null ? `mode ${m.raw}` : "—";
 
@@ -418,6 +441,11 @@ function renderControl(d) {
   $("ctl-body").hidden = !avail;
   if (!avail) return;
 
+  const teleop = control.mode === "teleop";
+  document.querySelectorAll(".mode-btn").forEach(b =>
+    b.setAttribute("aria-pressed", b.dataset.mode === control.mode));
+  $("mode-note").textContent = control.mode_description || "";
+
   const m = d.mode || {};
   $("c-enabled").innerHTML = control.enabled
     ? '<span class="chip ok">enabled</span>' : '<span class="chip mut">disabled</span>';
@@ -428,15 +456,17 @@ function renderControl(d) {
     : `<span class="chip mut">${control.client_timeout_s}s</span>`;
 
   let hint = "";
-  if (m.raw === 3) hint = "E-stop is engaged — release the hardware button before enabling.";
+  if (control.mode === "rc") hint = "The RC handset has the chassis. Switch to Teleop to drive from here.";
+  else if (control.mode === "autoware") hint = "Reserved for the autonomous stack. No ROS 2 driver is wired up yet, so nothing will drive.";
+  else if (m.raw === 3) hint = "E-stop is engaged — release the hardware button before enabling.";
   else if (m.raw === 4) hint = "Chassis is in error mode. Clear the fault first.";
   else if (control.timed_out) hint = "Deadman tripped: no command reached the server in time. Re-enable to continue.";
   else if (!control.enabled) hint = "Press Enable, then hold the joystick to drive.";
   $("c-hint").textContent = hint;
 
-  $("btn-enable").disabled = control.enabled || m.raw === 3 || m.raw === 4;
+  $("btn-enable").disabled = !teleop || control.enabled || m.raw === 3 || m.raw === 4;
   $("btn-disable").disabled = !control.enabled;
-  $("pad").classList.toggle("disabled", !control.enabled);
+  $("pad").classList.toggle("disabled", !control.enabled || !teleop);
 
   // Keep the transmit loop matched to the server. If the server dropped the enable
   // (deadman, estop, a fault) stop transmitting; if it is enabled and this tab is
@@ -465,6 +495,14 @@ async function post(path, body) {
     return await r.json();
   } catch (e) { return { ok:false, error:String(e) }; }
 }
+
+document.querySelectorAll(".mode-btn").forEach(b => {
+  b.onclick = async () => {
+    haltDrive();                       // never carry a velocity across a source change
+    await post("/api/mode", { mode: b.dataset.mode });
+    poll();
+  };
+});
 
 $("btn-enable").onclick  = async () => {
   const r = await post("/api/enable", { on:true });
