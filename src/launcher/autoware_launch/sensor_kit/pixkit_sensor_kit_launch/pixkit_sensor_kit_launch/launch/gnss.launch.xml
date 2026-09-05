@@ -1,12 +1,15 @@
 <launch>
   <arg name="launch_driver" default="true"/>
-  <arg name="gnss_receiver" default="chc" description="ublox(default) or septentrio or chc or fixposition"/>
+  <arg name="gnss_receiver" default="ublox_dgnss" description="ublox_dgnss (u-blox ZED-F9R over USB, this platform) or ublox or septentrio or chc or fixposition"/>
   <arg name="coordinate_system" default="1" description="0:UTM, 1:MGRS, 2:PLANE"/>
 
   <group>
     <push-ros-namespace namespace="gnss"/>
 
     <!-- Switch topic name -->
+    <!-- relative: this group pushes the 'gnss' namespace, so this resolves to /gnss/fix,
+         which is where ublox_nav_sat_fix_hp publishes once namespaced. -->
+    <let name="navsatfix_topic_name" value="fix" if="$(eval &quot;'$(var gnss_receiver)'=='ublox_dgnss'&quot;)"/>
     <let name="navsatfix_topic_name" value="ublox/nav_sat_fix" if="$(eval &quot;'$(var gnss_receiver)'=='ublox'&quot;)"/>
     <let name="navsatfix_topic_name" value="septentrio/nav_sat_fix" if="$(eval &quot;'$(var gnss_receiver)'=='septentrio'&quot;)"/>
     <let name="navsatfix_topic_name" value="fix" if="$(eval &quot;'$(var gnss_receiver)'=='chc'&quot;)"/>
@@ -24,7 +27,26 @@
     </group>
 
 
-    <!-- Ublox Driver -->
+    <!-- u-blox ZED-F9R over USB (ublox_dgnss) + NTRIP corrections from ichimill.
+         device_family:=F9R is required: the F9P and F9R share USB product id 0x01a9 and
+         autodetection resolves it to F9P, which loads the wrong UBX config.
+         Credentials come from NTRIP_USERNAME / NTRIP_PASSWORD in the environment;
+         source ~/.ichimill.env first. This repository is public; do not put them here.
+         See docs/GNSS_IMU_UBLOX_F9R.md. -->
+    <group if="$(eval &quot;'$(var gnss_receiver)'=='ublox_dgnss'&quot;)">
+      <include file="$(find-pkg-share ublox_dgnss)/launch/ublox_rover_hpposllh_navsatfix.launch.py" if="$(var launch_driver)">
+        <arg name="device_family" value="F9R"/>
+      </include>
+      <include file="$(find-pkg-share ublox_dgnss)/launch/ntrip_client.launch.py" if="$(var launch_driver)">
+        <arg name="use_https" value="false"/>
+        <arg name="host" value="ntrip.ales-corp.co.jp"/>
+        <arg name="port" value="2101"/>
+        <arg name="mountpoint" value="RTCM32M7S"/>
+      </include>
+    </group>
+
+    <!-- Ublox Driver (ublox_gps): cannot receive RTCM from ROS, and the config file it
+         names is not shipped by ublox_gps 2.3.0. Kept for reference only. -->
     <group if="$(eval &quot;'$(var gnss_receiver)'=='ublox'&quot;)">
       <node pkg="ublox_gps" name="ublox" exec="ublox_gps_node" if="$(var launch_driver)" respawn="true" respawn_delay="1.0">
         <remap from="~/fix" to="~/nav_sat_fix"/>
@@ -47,7 +69,9 @@
       <arg name="output_topic_gnss_fixed" value="fixed"/>
 
       <arg name="coordinate_system" value="$(var coordinate_system)"/>
-      <arg name="use_gnss_ins_orientation" value="true"/>
+      <!-- ublox_dgnss publishes no attitude solution (ublox_ubx_msgs has no UBXNavATT),
+           so gnss_poser must not wait for /autoware_orientation on this platform. -->
+      <arg name="use_gnss_ins_orientation" value="$(eval &quot;'$(var gnss_receiver)'!='ublox_dgnss'&quot;)"/>
 
       <arg name="gnss_frame" value="gnss_link"/>
     </include>

@@ -59,13 +59,19 @@ frames:
 |---|---|
 | [OUSTER_OS1_128.md](sensors/OUSTER_OS1_128.md) | The everyday lidar |
 | [OUSTER_OS2_32.md](sensors/OUSTER_OS2_32.md) | The alternate lidar; shares the top mount |
-| [CHC_CGI410.md](sensors/CHC_CGI410.md) | GNSS/INS, two antennas |
+| [CHC_CGI410.md](sensors/CHC_CGI410.md) | GNSS/INS, two antennas — Pixkit platform, not fitted to the Jetson |
 | [CAMERA.md](sensors/CAMERA.md) | USB camera for traffic lights |
 | [VELODYNE_VLP16.md](sensors/VELODYNE_VLP16.md) | Not fitted; kept for the stock configuration |
 | [ULTRASONIC_RADAR.md](sensors/ULTRASONIC_RADAR.md) | Ultrasonic and Continental ARS408 |
 
-**[GNSS_RTK.md](GNSS_RTK.md)** — RTK corrections over SoftBank ichimill, both via a
-`str2str` relay and via the receiver's own built-in NTRIP client.
+**[GNSS_IMU_UBLOX_F9R.md](GNSS_IMU_UBLOX_F9R.md)** — The SparkFun GPS-RTK Dead Reckoning
+kit (u-blox ZED-F9R) on the Jetson: which ROS 2 driver actually closes the NTRIP loop over
+USB and why the obvious one does not, RTK over ichimill, and what the receiver does and
+does not give Autoware. **Start here for GNSS on this platform.**
+
+**[GNSS_RTK.md](GNSS_RTK.md)** — RTK corrections over SoftBank ichimill for the **CHC
+CGI-410** over Ethernet, both via a `str2str` relay and via the receiver's own built-in
+NTRIP client. Pixkit platform; none of its network setup applies to a USB receiver.
 
 ---
 

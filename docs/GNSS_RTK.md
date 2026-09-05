@@ -1,5 +1,10 @@
 # RTK (SoftBank ichimill) on Pixkit — receiver built-in NTRIP client
 
+> [!WARNING]
+> ichimill account IDs and passwords are **not** in this repository — it is public. The
+> placeholders `<id4>` / `<pass4>` below refer to account #4; ask the platform owner.
+> See [GNSS_IMU_UBLOX_F9R.md](GNSS_IMU_UBLOX_F9R.md#credentials--keep-them-out-of-this-repository)
+> for how credentials are supplied at runtime.
 
 Two ways to feed RTCM corrections to the CHC CGI-410. **Path B is set up on this
 machine** and is preferred for road driving.
@@ -46,7 +51,7 @@ In the receiver's network / Ethernet settings:
 | Server / host | `ntrip.ales-corp.co.jp` |
 | Port | `2101` |
 | Mount point | `RTCM32M7S` |
-| User / ID | `67vsdpoz`  (ichimill account **#4**) |
+| User / ID | `<id4>` (ichimill account **#4** — ask the platform owner) |
 | Password | see `Ntrip_notice_0714164534.xlsx`, row 4 |
 
 Save. Accounts #1–#3 are in use on other vehicles; #4 is reserved for Pixkit.
@@ -133,7 +138,7 @@ curl -sG "http://$R/netlink_ip_addr_set.cmd" --data-urlencode "$U" \
 
 # 4. ichimill account #4
 curl -sG "http://$R/netlink_account_set.cmd" --data-urlencode "$U" \
-  -d link_idx=$L -d name=67vsdpoz --data-urlencode "pwd=<pass4>"
+  -d link_idx=$L -d name=<id4> --data-urlencode "pwd=<pass4>"
 
 # 5. PROOF the NAT path works - asks the caster for its source table
 curl -sG "http://$R/netlink_data_source_list_get.cmd" --data-urlencode "$U" -d link_idx=$L
@@ -183,7 +188,7 @@ Use if Path B misbehaves. Two corrections vs. the lab guide:
   `RTKLIB/app/consapp/str2str/gcc`.
 
 ```bash
-str2str -in "ntrip://67vsdpoz:<pass>@ntrip.ales-corp.co.jp:2101/RTCM32M7S" \
+str2str -in "ntrip://<id4>:<pass4>@ntrip.ales-corp.co.jp:2101/RTCM32M7S" \
         -p 35.90 139.93 50 -n 5000 -out "tcpsvr://:2102"
 ```
 
