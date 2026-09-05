@@ -247,6 +247,20 @@ The driver supports CAN (`set_comu_interface(comu_can)`), and this Jetson alread
 converter and its cable entirely — see
 [VEHICLE_CAN_AND_RUNTIME.md](VEHICLE_CAN_AND_RUNTIME.md) for bring-up on this machine.
 
+## Live dashboard
+
+A read-only web view of everything above lives in
+[`tools/segway_dashboard/`](../tools/segway_dashboard/):
+
+```bash
+sudo tools/segway_dashboard/server.py --lib /path/to/libctrl_arm64-v8a.so
+# then open http://<jetson-ip>:8080/
+```
+
+It shows connection state, battery, chassis mode, odometry, firmware versions and
+per-board error codes, and exposes the same data as JSON at `/api/status`. It never
+sends motion commands. See its README for details.
+
 ## Safety
 
 The RMP is a powered mobile base. When testing:
