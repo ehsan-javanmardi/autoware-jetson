@@ -1,5 +1,10 @@
 acados_version: v0.5.3
 acados_tera_renderer_version: v0.2.0
 acados_pip_packages:
-  - casadi
+  # casadi is pinned because it is the version boundary, not a preference: the aarch64
+  # wheels from 3.8.0 on are built against GCC 13 and need GLIBCXX_3.4.32, while Ubuntu
+  # 22.04 ships GCC 12 / GLIBCXX_3.4.30. Unpinned, pip takes the newest and every acados
+  # code-generation step fails at `import casadi` with an ImportError that names
+  # libstdc++ rather than casadi. Raise this only alongside a newer libstdc++.
+  - casadi==3.7.2
   - sympy
