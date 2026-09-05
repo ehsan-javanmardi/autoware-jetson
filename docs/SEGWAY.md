@@ -87,21 +87,56 @@ serial open success! serial port:/dev/ttyUSB0, baud:921600
 
 This is hard-coded in `libctrl_arm64-v8a.so` and not configurable through the API.
 
+### Connector pinout (manual, Appendix 3)
+
+The chassis 8-pin connector. **Only pins 3, 4, 5 are the serial port:**
+
+| Pin | Signal | Colour | Group |
+|-----|--------|--------|-------|
+| 1 | CANH | Red | CAN |
+| 2 | CANL | Gray | CAN |
+| **3** | **TX** | **Blue** | **Serial port** |
+| **4** | **RX** | **Green** | **Serial port** |
+| **5** | **GND** | **White** | **Serial port** |
+| 6 | 5V | Brown | Remote-control receiver |
+| 7 | GND | Black | Remote-control receiver |
+| 8 | S.B PPM | Yellow | Remote-control receiver |
+
+The 2-pin connector is power only: Power+ (Red), Power− (Black), AWG16.
+
+**Two wiring traps this table exposes:**
+
+1. **The serial ground is pin 5, the WHITE wire** — not the black one. Black (pin 7) is
+   the *remote-control receiver* ground. Using black for serial ground is the obvious
+   mistake, since black conventionally means ground.
+2. **TX/RX are named from the chassis's point of view.** Pin 3 "TX" is the chassis
+   transmitting. So it must go to the converter's **RX**:
+
+   ```
+   chassis pin 3 TX   (Blue)  ->  converter RX
+   chassis pin 4 RX   (Green) ->  converter TX
+   chassis pin 5 GND  (White) ->  converter GND
+   ```
+
+   Wiring blue-to-TX and green-to-RX "matching the labels" is wrong and produces exactly
+   the silence observed.
+
+### What the manual does NOT specify
+
+- **No baud rate anywhere in the 59 pages.** The only source remains the SDK's own
+  output: **921600**.
+- **No signal voltage** (3.3 V vs 5 V TTL). The spec table lists the communication
+  interface as **"UART, CAN"** — so it is TTL-level, *not* RS-232. A CP2102/FT232 TTL
+  bridge is therefore the right class of converter; an RS-232 transceiver would be wrong.
+
 ### Remaining causes
 
-With the host side proven, the fault is between the converter and the chassis:
+With the host side proven and the pinout known, the fault is in the chassis wiring:
 
-1. **TX and RX swapped.** The single most common cause, and indistinguishable from any
-   other silence in software. Converter TX → chassis RX, converter RX → chassis TX.
-   Try swapping the two wires.
-2. **Wrong converter or wrong signal levels.** The converter currently attached is a
-   **Silicon Labs CP2102** (`10c4:ea60`), a generic USB-TTL bridge. The unit seen
-   earlier was an **FTDI FT232RL**. If the manual specifies a particular converter — or
-   if the chassis port is RS-232 rather than TTL — a generic TTL board will not
-   communicate, and RS-232 voltages could damage it. Confirm against the manual.
-3. **Chassis port or mode.** Verify the wires are on the chassis's serial port (not a
-   different header), that the chassis is powered and out of E-stop, and that it is not
-   configured for CAN control instead.
+1. **TX/RX not crossed** — see the trap above. Most likely cause.
+2. **Wrong ground wire** — black (pin 7) used instead of white (pin 5).
+3. **Chassis state** — powered, out of E-stop, and not in a mode that disables serial
+   control. See the mode-switching table in Appendix 1.
 
 ### Probing the chassis
 
