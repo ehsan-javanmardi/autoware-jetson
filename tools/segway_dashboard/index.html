@@ -103,6 +103,7 @@
     letter-spacing:.02em; padding:18px; margin-bottom:16px; touch-action:manipulation;
   }
   .estop:active { filter:brightness(.88); }
+  .estop-note { color:var(--ink-dim); font-size:12.5px; margin:-8px 0 18px; text-align:center; }
 
   .ctl-grid { display:grid; gap:14px; grid-template-columns:1fr; }
   @media (min-width:760px){ .ctl-grid { grid-template-columns:340px 1fr; align-items:start; } }
@@ -255,7 +256,8 @@
     </div>
 
     <div id="ctl-body">
-      <button class="estop" id="estop">■ STOP — release &amp; disable</button>
+      <button class="estop" id="estop">STOP</button>
+      <div class="estop-note">Software stop — zeroes speed and drops the enable. The <b>hardware E-stop</b> is the only thing that cuts motor power.</div>
 
       <div class="ctl-grid">
         <div class="card">
@@ -319,7 +321,7 @@ function selectTab(name) {
   $("tab-control").setAttribute("aria-selected", !isStatus);
   $("panel-status").hidden = !isStatus;
   $("panel-control").hidden = isStatus;
-  if (isStatus) stopDrive();          // never leave a command running on tab switch
+  if (isStatus) haltDrive();          // never leave a command running on tab switch
 }
 $("tab-status").onclick  = () => selectTab("status");
 $("tab-control").onclick = () => selectTab("control");
@@ -436,6 +438,11 @@ function renderControl(d) {
   $("btn-disable").disabled = !control.enabled;
   $("pad").classList.toggle("disabled", !control.enabled);
 
+  // Keep the transmit loop matched to the server. If the server dropped the enable
+  // (deadman, estop, a fault) stop transmitting; if it is enabled and this tab is
+  // showing, keep feeding it.
+  driveLoop(control.enabled && !$("panel-control").hidden);
+
   if (!control.enabled && !dragging) resetKnob();
   updateLimitLabels();
 }
@@ -459,9 +466,12 @@ async function post(path, body) {
   } catch (e) { return { ok:false, error:String(e) }; }
 }
 
-$("btn-enable").onclick  = () => post("/api/enable", { on:true });
-$("btn-disable").onclick = () => { stopDrive(); post("/api/enable", { on:false }); };
-$("estop").onclick       = () => { stopDrive(); post("/api/estop"); };
+$("btn-enable").onclick  = async () => {
+  const r = await post("/api/enable", { on:true });
+  if (r.enabled) driveLoop(true);      // start transmitting at once, before the next poll
+};
+$("btn-disable").onclick = () => { haltDrive(); post("/api/enable", { on:false }); };
+$("estop").onclick       = () => { haltDrive(); post("/api/estop"); };
 
 /* joystick */
 const pad = $("pad"), knob = $("knob");
@@ -495,33 +505,53 @@ function sendVel() {
   post("/api/cmd_vel", { linear: vec.y*ml, angular: -vec.x*ma });   // +z = left
 }
 
+/* The chassis leaves control mode if it receives no command for 150 ms, and the server
+   disables the motors after 400 ms of client silence. So we transmit continuously the
+   whole time control is enabled — zeros while the joystick sits idle — rather than only
+   while it is being dragged. Transmitting only during a drag disables the motors 400 ms
+   after Enable, before the operator can touch the stick. */
+function driveLoop(on) {
+  if (on && !txTimer) { sendVel(); txTimer = setInterval(sendVel, 100); }   // 10 Hz
+  else if (!on && txTimer) { clearInterval(txTimer); txTimer = null; }
+}
+
 function startDrive(e) {
   if (!control.enabled) return;
   dragging = true;
   pad.setPointerCapture?.(e.pointerId);
   updateFromPoint(e.clientX, e.clientY);
   sendVel();
-  clearInterval(txTimer);
-  txTimer = setInterval(sendVel, 100);           // 10 Hz, inside the 400ms deadman
 }
-function moveDrive(e) { if (dragging) { updateFromPoint(e.clientX, e.clientY); } }
-function stopDrive() {
-  if (txTimer) { clearInterval(txTimer); txTimer = null; }
-  if (dragging) { dragging = false; post("/api/cmd_vel", { linear:0, angular:0 }); }
+function moveDrive(e) { if (dragging) updateFromPoint(e.clientX, e.clientY); }
+
+/* Knob released: stop steering but keep the loop alive, so the chassis stays enabled. */
+function releaseKnob() {
+  if (!dragging) return;
+  dragging = false;
   resetKnob();
+  sendVel();                       // zero, immediately
+}
+
+/* Operator lost the controls: stop moving AND stop transmitting, so the server's
+   deadman drops the enable and the chassis falls back to lock mode. */
+function haltDrive() {
+  dragging = false;
+  resetKnob();
+  driveLoop(false);
+  post("/api/cmd_vel", { linear:0, angular:0 });
 }
 
 pad.addEventListener("pointerdown", startDrive);
 pad.addEventListener("pointermove", moveDrive);
-pad.addEventListener("pointerup", stopDrive);
-pad.addEventListener("pointercancel", stopDrive);
-pad.addEventListener("pointerleave", e => { if (dragging) stopDrive(); });
+pad.addEventListener("pointerup", releaseKnob);
+pad.addEventListener("pointercancel", releaseKnob);
+pad.addEventListener("pointerleave", releaseKnob);
 pad.addEventListener("contextmenu", e => e.preventDefault());
 
-/* stop on anything that means the operator lost the controls */
-window.addEventListener("blur", stopDrive);
-document.addEventListener("visibilitychange", () => { if (document.hidden) stopDrive(); });
-window.addEventListener("pagehide", stopDrive);
+/* anything that means the operator is no longer watching */
+window.addEventListener("blur", haltDrive);
+document.addEventListener("visibilitychange", () => { if (document.hidden) haltDrive(); });
+window.addEventListener("pagehide", haltDrive);
 
 /* ---------- poll ---------- */
 async function poll() {
@@ -533,7 +563,7 @@ async function poll() {
     $("dot").className = "dot down";
     $("banner-main").textContent = "Dashboard server unreachable";
     $("stamp").textContent = "no server";
-    stopDrive();
+    haltDrive();
   }
 }
 poll();
