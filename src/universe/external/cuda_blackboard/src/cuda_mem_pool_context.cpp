@@ -39,7 +39,17 @@ CudaMemPoolContext::CudaMemPoolContext()
   CUDA_BLACKBOARD_CHECK_CUDA_ERROR(cudaStreamCreateWithFlags(&free_stream_, cudaStreamNonBlocking));
 
   int device_id = 0;
+#if defined(CUDART_VERSION) && CUDART_VERSION >= 12080
   CUDA_BLACKBOARD_CHECK_CUDA_ERROR(cudaStreamGetDevice(stream_, &device_id));
+#else
+  // cudaStreamGetDevice() was introduced in CUDA 12.8. JetPack 6 for the Jetson AGX
+  // Orin ships CUDA 12.6, and its toolkit is versioned with L4T rather than chosen
+  // independently, so the call has to be avoided rather than the toolkit upgraded.
+  // Both streams above were just created with cudaStreamCreateWithFlags(), which binds
+  // them to the current device — so the current device *is* the stream's device here,
+  // and the two calls return the same id.
+  CUDA_BLACKBOARD_CHECK_CUDA_ERROR(cudaGetDevice(&device_id));
+#endif
 
   cudaMemPoolProps pool_props = {};
   pool_props.allocType = cudaMemAllocationTypePinned;
