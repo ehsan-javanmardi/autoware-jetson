@@ -43,55 +43,77 @@ Nothing is bound to `ttyTHS1` or `ttyTHS2`, so no `systemctl disable` step is ne
 
 ## Current status
 
-The link **cannot be tested yet**. Two things block it, both needing `sudo`:
+**Not communicating.** The port opens and the Jetson UART is healthy, but the chassis
+sends nothing. Tested 2026-09-05.
 
-**1. The `tlab` user is not in `dialout`.** The ports are `crw-rw---- root dialout`, so
-opening either one fails outright:
+### What was fixed
 
-```bash
-sudo usermod -aG dialout $USER
-# then log out and back in (or `newgrp dialout` for the current shell only)
-id -nG | grep dialout      # confirm before continuing
-```
-
-**2. `pyserial` is not installed**, needed for the check script below:
+`tlab` was not in `dialout`, so the ports could not be opened at all. Fixed:
 
 ```bash
-sudo apt install python3-serial      # or: pip3 install pyserial
+sudo usermod -aG dialout tlab      # done; re-login for it to apply to your shell
 ```
 
-## Verifying the link
+### What was measured
 
-Once the two blockers above are cleared, listen **passively** first. The chassis streams
-feedback frames on its own; if bytes arrive, TX/RX/GND are correct and the baud matches.
-This sends nothing to the robot, so it cannot cause motion.
+Passive listen on both UARTs, 2 s each, four baud rates — **zero bytes everywhere**:
 
-```bash
-python3 - <<'PY'
-import serial, time
-PORT = "/dev/ttyTHS1"          # try ttyTHS2 if silent
-for baud in (115200, 460800, 230400, 921600):
-    with serial.Serial(PORT, baud, timeout=0.5) as s:
-        s.reset_input_buffer()
-        data = b""
-        t = time.time()
-        while time.time() - t < 2:
-            data += s.read(256)
-        print(f"{baud:>7}: {len(data):5d} bytes  {data[:24].hex(' ')}")
-PY
+```
+ttyTHS1 @ 115200/230400/460800/921600 :  0 bytes
+ttyTHS2 @ 115200/230400/460800/921600 :  0 bytes
 ```
 
-Reading the result:
+Holding `ttyTHS1` open for 5 s, the interrupt counter for `3100000.serial` did **not
+move** (stayed at 2), and the only bytes ever captured were `00 00`:
 
-- **Steady, repeating framing at one baud** — link is good, note that baud.
-- **Bytes at every baud, all garbage** — wrong baud, or TX/RX swapped.
-- **Zero bytes everywhere** — try `ttyTHS2`; then check TX↔RX are *crossed*
-  (chassis TX → Jetson RX), that grounds are common, and that the chassis is powered
-  and out of E-stop.
+```
+112:   2   GICv3 144 Level  3100000.serial     # before and after 5 s of listening
+$ xxd /tmp/ths1.bin
+00000000: 0000                                 ..
+```
 
-The baud rate is **not documented in the driver source** — it is computed inside a
-closed prebuilt library (see below). Confirm it from the manual or empirically above;
-do not assume 115200.
+Two null bytes with no interrupt activity is the signature of a **break condition or a
+floating/idle-low RX line**, not data. Nothing is driving the Jetson's RX pin.
+
+### What this rules in and out
+
+- **Not a permissions problem** — fixed, ports now open.
+- **Not a console conflict** — consoles are on `ttyTCU0`/`ttyAMA0`/`ttyGS0`.
+- **Not a disabled UART** — `serial@3100000` and `serial@3110000` are both `status=okay`,
+  and the IRQ registers when the port is opened.
+- **The port is the right one.** `UART1_TX_PR2` / `UART1_RX_PR3` is controller
+  `serial@3100000` = `/dev/ttyTHS1`, which is 40-pin header **pin 8 (TX)** and
+  **pin 10 (RX)**. Use `ttyTHS1`.
+
+### Prime suspect: signal levels
+
+The Jetson 40-pin UART is **3.3 V TTL**. If the RMP's serial port is **RS-232**
+(±12 V, typical of a DB9 on this class of chassis), then wiring TX/RX/GND straight to
+the header will not communicate — and can damage the Jetson pin. **Confirm the chassis
+serial voltage in the manual before applying power to that link again.** If it is
+RS-232, an isolating transceiver (MAX3232-based) or a USB-RS232 adapter is required.
+
+### Next steps, in order
+
+1. **Loopback-test the Jetson UART.** Power down, jumper header **pin 8 to pin 10**
+   (nothing else), then:
+
+   ```bash
+   stty -F /dev/ttyTHS1 115200 raw -echo
+   (timeout 2 cat /dev/ttyTHS1 | xxd &) ; sleep 0.3 ; printf 'PING' > /dev/ttyTHS1 ; sleep 2
+   ```
+
+   `PING` echoed back proves the UART, pinmux and wiring path are all fine, and moves
+   the fault to the robot side. Nothing echoed means the problem is on the Jetson.
+
+2. **Check the RMP serial voltage level** in the manual (see Prime suspect above).
+
+3. **Confirm TX/RX are crossed** — Jetson TX (pin 8) → chassis RX, Jetson RX (pin 10)
+   → chassis TX. A straight-through pairing is silent in exactly this way.
+
+4. **Only then** consider whether the chassis needs a host request before it will talk.
+   Some RMP firmware stays silent until the host sends a heartbeat. That means writing
+   to a powered base, so resolve items 1-3 first.
 
 ## ROS 2 driver
 
