@@ -34,7 +34,8 @@ chassis read-only, and the vendor SDK's version-mismatch warning.
 
 **[SEGWAY_CONNECTING.md](SEGWAY_CONNECTING.md)** — Once it works: every route to the
 Jetson (Tailscale from anywhere, lab WiFi, the direct LAN cable), how to start and stop the
-dashboard server, and how to drive from a phone or tablet.
+dashboard server, the RC handset's switches and how to map them to your own transmitter,
+and how to drive from a phone or tablet.
 
 **[../tools/segway_dashboard/](../tools/segway_dashboard/)** — The web dashboard itself:
 live telemetry, and an optional touch control tab. Its README documents the JSON API and

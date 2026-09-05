@@ -213,6 +213,65 @@ The SDK shells out to `sudo chmod` and `sudo stty` on the serial device during
 
 ---
 
+## 4. The RC handset (T8FB)
+
+The chassis ships with a **FlySky T8FB** transmitter. The manual (§1.3) describes its
+switches **by function only** — it never names SWA/SWB and never gives channel numbers,
+so the mapping from a physical switch to a function has to be found by watching the
+chassis. See [Mapping your switches](#mapping-your-switches) below.
+
+### The two switches that matter
+
+| Function | Positions | Effect |
+|---|---|---|
+| **Emergency stop** | Top = exit E-stop · Bottom = engage E-stop | Bottom puts the chassis in mode 3, wheels unpowered |
+| **Enable** | Top → Bottom = enable · Bottom → Top = disable | Enable is an *edge*, not a level: you move it down to enable |
+
+Both are described as two-position. If one of your switches has three positions, the
+middle one is not a documented state — the chassis reads it against a threshold, so treat
+it as belonging to whichever end it resolves to, and confirm by watching.
+
+Two knobs set the RC's own speed limits: one for maximum angular velocity, one for
+maximum linear. Left reduces, right increases. These affect RC driving only, not teleop.
+
+### The rule that decides RC vs host
+
+> **From the manual, §1.3.4:** *"The remote control cannot be turned on when the upper
+> system controls the car. Or after the remote control is turned on, turn the enable
+> switch to the top."*
+
+So for **Teleop or Autoware to drive, the handset must either be switched off, or have its
+enable switch in the TOP (disabled) position.** The handset takes priority. If the
+joystick in the dashboard does nothing while everything else looks correct, this is the
+first thing to check.
+
+The reverse also holds: to drive with the handset, put the dashboard in **RC handset**
+mode so the host stops transmitting.
+
+### Mapping your switches
+
+The chassis reports what it is listening to, so you can identify each switch in about a
+minute. Run this on the Jetson and flip one switch at a time:
+
+```bash
+watch -n0.3 "curl -s localhost:8080/api/status | python3 -c \
+  'import json,sys; d=json.load(sys.stdin); m=d[\"mode\"]; \
+   print(m[\"raw\"], m[\"name\"], \"|\", m[\"wheels\"], \"|\", m[\"control_source\"])'"
+```
+
+What to look for:
+
+- **The E-stop switch** moves the chassis to and from **mode 3 (Emergency stop)**, and
+  `wheels` changes to `Wheels unpowered`. This is the unmistakable one — start here.
+- **The enable switch** moves the chassis between **mode 0 (Lock)** and **mode 1 (Vehicle
+  control)** without ever reaching mode 3.
+- **`control_source`** shows whether the chassis is taking commands from the handset
+  (`RC handset (0)`) or the host (`Host computer (1)`). Watch this while moving the
+  enable switch: it is what tells you the handset has released the chassis.
+
+Record what you find — the channel numbers are a property of how your receiver is bound,
+not something the manual fixes, so they may differ from another unit.
+
 ## 4. Driving from a phone
 
 1. Reach the dashboard by any route above.
