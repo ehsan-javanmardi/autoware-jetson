@@ -1,0 +1,35 @@
+<launch>
+  <!-- Livox HAP driver, configured for Autoware rather than for Livox's own demo.
+
+       Two departures from the driver's own msg_HAP_launch.py, both required:
+
+       xfer_format 0 publishes sensor_msgs/PointCloud2. The driver defaults to 1, its
+       CustomMsg format, which nothing in Autoware can read.
+
+       The lidar's address lives in HAP_config.json, not here — the SDK reads that file
+       directly. This machine's HAP is at 192.168.1.110 with the host on 192.168.1.101
+       (eno1). Changing the lidar's address means editing that JSON. -->
+
+  <arg name="launch_driver" default="true"/>
+  <arg name="frame_id" default="livox_frame"/>
+  <arg name="publish_freq" default="10.0"/>
+  <arg name="output_topic" default="/sensing/lidar/top/livox/points"/>
+  <arg name="imu_topic" default="/sensing/lidar/top/livox/imu"/>
+  <arg name="user_config_path"
+       default="$(find-pkg-share livox_ros_driver2)/config/HAP_config.json"/>
+
+  <node pkg="livox_ros_driver2" exec="livox_ros_driver2_node" name="livox_hap"
+        if="$(var launch_driver)" output="screen">
+    <param name="xfer_format" value="0"/>          <!-- 0 = sensor_msgs/PointCloud2 -->
+    <param name="multi_topic" value="0"/>          <!-- one topic for all lidars -->
+    <param name="data_src" value="0"/>             <!-- 0 = live device -->
+    <param name="publish_freq" value="$(var publish_freq)"/>
+    <param name="output_data_type" value="0"/>
+    <param name="frame_id" value="$(var frame_id)"/>
+    <param name="user_config_path" value="$(var user_config_path)"/>
+    <param name="cmdline_input_bd_code" value="livox0000000001"/>
+
+    <remap from="/livox/lidar" to="$(var output_topic)"/>
+    <remap from="/livox/imu" to="$(var imu_topic)"/>
+  </node>
+</launch>

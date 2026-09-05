@@ -1,0 +1,10 @@
+/**:
+  ros__parameters:
+    # Single lidar: the concatenate node is not used for this profile (it refuses to load
+    # with fewer than two inputs), so lidar.launch.xml routes the cloud through a crop-box
+    # passthrough instead. This file exists because the include always names one.
+    input_topics:
+      - /sensing/lidar/top/livox/points
+    output_frame: base_link
+    lidar_timestamp_offsets: [0.0]
+    lidar_timestamp_noise_window: [0.01]

@@ -19,7 +19,7 @@
            exposed only as raw UBX ESF (ublox_ubx_msgs/UBXEsfMeas), which imu_corrector
            cannot read, so the Ouster's IMU is the input here.
            See docs/GNSS_IMU_UBLOX_F9R.md. -->
-      <arg name="input_topic" value="/sensing/lidar/top/ouster/imu"/>
+      <arg name="input_topic" value="/sensing/lidar/top/livox/imu"/>
       <!-- <arg name="input_topic" value="/sensing/lidar/top/ouster/imu"/> -->
       <!-- <arg name="input_topic" value="/fixposition/corrimu"/> -->
       <arg name="output_topic" value="imu_data"/>

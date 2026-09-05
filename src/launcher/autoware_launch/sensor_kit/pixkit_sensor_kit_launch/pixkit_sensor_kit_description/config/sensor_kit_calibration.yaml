@@ -62,6 +62,18 @@ sensor_kit_base_link:
     roll: 0.0
     pitch: 0.0
     yaw: 0.0
+  livox_frame:
+    # Livox HAP, mounted on the sensor kit. PLACEHOLDER: x/y/z/rpy are the kit origin
+    # until the HAP is measured on the Segway. Ground segmentation reads z as height above
+    # base_link, so an unmeasured mount makes the ground plane wrong, not merely offset.
+    # The HAP's IMU shares this frame -- the driver publishes /livox/imu in frame_id
+    # livox_frame, so imu_corrector needs no separate extrinsic.
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    roll: 0.0
+    pitch: 0.0
+    yaw: 0.0
   velodyne_top_base_link:
     x: 0.0
     y: 0.0

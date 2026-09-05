@@ -1,0 +1,3 @@
+Not a ROS package. Built once with cmake/make/make install into /usr/local, where
+livox_ros_driver2's CMakeLists looks for liblivox_lidar_sdk_shared.so with REQUIRED.
+See docs/LIVOX_HAP.md.

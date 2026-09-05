@@ -5,13 +5,19 @@
        so it has to be this machine's address ON THE SENSOR LAN (enp3s0), not the address it
        reaches the internet by. Pointing it anywhere else gives a driver that connects and
        configures the sensor normally and then never receives a packet. -->
-  <arg name="host_ip" default="192.168.1.100"/>
+  <arg name="host_ip" default="192.168.1.101"/>
 
   <!-- Which set of lidars is fitted. Each profile selects the drivers to start and a matching
        concatenate configuration from config/lidar_profiles/, whose input_topics and timestamp
        arrays have to agree with the drivers that actually publish. See docs/SENSORS.md. -->
-  <arg name="lidar_profile" default="os1_128"
-       description="fitted lidar set: os1_128 | os2_32 | velodyne"/>
+  <arg name="lidar_profile" default="livox"
+       description="fitted lidar set: livox | os1_128 | os2_32 | velodyne"/>
+
+  <!-- The Livox HAP is on the same wire as the Ousters. Its address is configured in
+       livox_ros_driver2/config/HAP_config.json, which the SDK reads directly, so it is
+       not an argument here. See docs/LIVOX_HAP.md. -->
+  <let name="use_livox"
+       value="$(eval &quot;'true' if '$(var lidar_profile)' == 'livox' else 'false'&quot;)"/>
 
   <arg name="os1_128_ip" default="192.168.1.126" description="Ouster OS-1-128 address"/>
   <arg name="os2_32_ip" default="192.168.1.120" description="Ouster OS-2-32 address"/>
@@ -23,7 +29,14 @@
   <!-- The concatenate node throws "Only one topic given. Need at least two topics to continue."
        and refuses to load, so single lidar profiles get a passthrough instead. -->
   <let name="concat_enabled"
-       value="$(eval &quot;'false' if '$(var lidar_profile)' in ('os1_128', 'os2_32') else 'true'&quot;)"/>
+       value="$(eval &quot;'false' if '$(var lidar_profile)' in ('os1_128', 'os2_32', 'livox') else 'true'&quot;)"/>
+
+  <!-- The passthrough below has to name the one cloud that actually arrives, and the frame
+       it arrives in. Both differ per single-lidar profile. -->
+  <let name="single_lidar_topic"
+       value="$(eval &quot;'/sensing/lidar/top/livox/points' if '$(var lidar_profile)' == 'livox' else '/sensing/lidar/top/ouster/points'&quot;)"/>
+  <let name="single_lidar_frame"
+       value="$(eval &quot;'livox_frame' if '$(var lidar_profile)' == 'livox' else 'os_lidar_top'&quot;)"/>
   <let name="ouster_ip"
        value="$(eval &quot;'$(var os2_32_ip)' if '$(var lidar_profile)' == 'os2_32' else '$(var os1_128_ip)'&quot;)"/>
 
@@ -33,6 +46,13 @@
   <arg name="pointcloud_container_name" default="pointcloud_container"/>
   <group>
     <push-ros-namespace namespace="lidar"/>
+
+    <!-- Livox HAP -->
+    <group if="$(var use_livox)">
+      <include file="$(find-pkg-share pixkit_sensor_kit_launch)/launch/livox_hap.launch.xml">
+        <arg name="launch_driver" value="$(var launch_driver)"/>
+      </include>
+    </group>
 
     <!-- Ouster OS-1 (top) -->
     <group if="$(var use_ouster)">
@@ -124,11 +144,11 @@
         <composable_node pkg="autoware_pointcloud_preprocessor"
                          plugin="autoware::pointcloud_preprocessor::CropBoxFilterComponent"
                          name="single_lidar_passthrough">
-          <remap from="input" to="/sensing/lidar/top/ouster/points"/>
+          <remap from="input" to="$(var single_lidar_topic)"/>
           <remap from="output" to="/sensing/lidar/concatenated/pointcloud"/>
           <!-- Both frames are required: the component refuses to construct with an empty
                input_frame, and without output_frame the cloud stays in the sensor frame. -->
-          <param name="input_frame" value="os_lidar_top"/>
+          <param name="input_frame" value="$(var single_lidar_frame)"/>
           <param name="output_frame" value="base_link"/>
           <param name="min_x" value="-1000.0"/>
           <param name="max_x" value="1000.0"/>

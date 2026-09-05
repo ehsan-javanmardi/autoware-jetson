@@ -127,3 +127,11 @@ repositories:
     type: git
     url: https://github.com/autowarefoundation/trt_batched_nms.git
     version: 98024a240c6329704ef03fd7ef10011dddb5da67
+  sensor_component/external/Livox-SDK2:
+    type: git
+    url: https://github.com/Livox-SDK/Livox-SDK2.git
+    version: 08f523c930b2f0ba1e98a6afaa8d7476bf479908
+  sensor_component/external/livox_ros_driver2:
+    type: git
+    url: https://github.com/Livox-SDK/livox_ros_driver2.git
+    version: 4a1def929e5b59c7a8122d19fce6efba581ce9f7

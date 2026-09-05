@@ -64,6 +64,11 @@ frames:
 | [VELODYNE_VLP16.md](sensors/VELODYNE_VLP16.md) | Not fitted; kept for the stock configuration |
 | [ULTRASONIC_RADAR.md](sensors/ULTRASONIC_RADAR.md) | Ultrasonic and Continental ARS408 |
 
+**[LIVOX_HAP.md](LIVOX_HAP.md)** — The Livox HAP: what had to be vendored and why a plain
+`colcon build` could not do it alone, the JSON that holds the device address, the
+`xfer_format` that decides whether Autoware can read the cloud at all, and why the IMU
+comes from here rather than from the GNSS receiver.
+
 **[GNSS_IMU_UBLOX_F9R.md](GNSS_IMU_UBLOX_F9R.md)** — The SparkFun GPS-RTK Dead Reckoning
 kit (u-blox ZED-F9R) on the Jetson: which ROS 2 driver actually closes the NTRIP loop over
 USB and why the obvious one does not, RTK over ichimill, and what the receiver does and
