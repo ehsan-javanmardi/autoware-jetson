@@ -97,6 +97,14 @@ class SegwayVehicleInterface(Node):
         self.get_logger().info(
             f"connected: central 0x{v['central']:04x} motor 0x{v['motor']:04x} "
             f"host 0x{v['host']:04x}, battery {self.sdk.battery_soc()}%")
+        # Logged rather than merely configured: a wheel_base here that disagrees with the
+        # one in segway_description makes the controller and the chassis mean different
+        # things by the same steering command, and the symptom is a steady tracking
+        # offset that reads as a tuning problem. Printing it makes the mismatch findable.
+        self.get_logger().info(
+            f"wheel_base {self.wheel_base} m (must equal vehicle_info.param.yaml), "
+            f"limits {self.max_linear} m/s and {self.max_angular} rad/s, "
+            f"watchdog {self.command_timeout_s}s")
         if not self.sdk.responding():
             self.get_logger().error(
                 "chassis is not replying (versions read 0xffff). The serial link is open "

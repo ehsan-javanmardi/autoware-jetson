@@ -1,9 +1,18 @@
-# pixkit -- muti lidar
+# Segway RMP Plus 401 + Livox HAP + u-blox ZED-F9R.
+#
+# base_link is at the centre of the rear axle, on the ground (Autoware convention).
+# sensor_kit_base_link sits directly above it at the top of the chassis: the manual
+# gives the body height as 274 mm.
+#
+# The z here was 1.4 for the Pixkit. On a robot 274 mm tall that put every sensor
+# more than a metre above where it actually is, which does not merely offset the
+# cloud - ground segmentation reads z as height above base_link, so the ground plane
+# lands above the sensor and everything real is classified as below-ground.
 base_link:
   sensor_kit_base_link:
     x: 0.00
     y: 0.00
-    z: 1.4
+    z: 0.274
     roll: 0.0
     pitch: 0.0
     yaw: 0.0

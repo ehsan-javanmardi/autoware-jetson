@@ -68,6 +68,10 @@ frames:
 RViz: the bridge, why the topic allow list is deliberate rather than `.*`, and how to change
 what is exposed.
 
+**[VEHICLE_SEGWAY.md](VEHICLE_SEGWAY.md)** — Dimensions from the RMP manual, where
+`base_link` and each sensor sit, why steering is virtual on a robot with no steered axle,
+and what the inherited Pixkit numbers would have done to the ground plane.
+
 **[SEGWAY_VEHICLE_INTERFACE.md](SEGWAY_VEHICLE_INTERFACE.md)** — Autoware's vehicle
 interface for the RMP: how a bicycle-model steering command becomes a differential-drive
 yaw rate, the three safety properties, and why the vendor headers cannot be trusted about

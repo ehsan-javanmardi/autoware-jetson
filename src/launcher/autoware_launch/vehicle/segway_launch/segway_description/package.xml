@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>segway_description</name>
+  <version>0.1.0</version>
+  <description>Vehicle description for the Segway RMP Plus 401.</description>
+  <maintainer email="ehsan.jmardi@gmail.com">Ehsan Javanmardi</maintainer>
+  <license>Apache-2.0</license>
+  <buildtool_depend>ament_cmake_auto</buildtool_depend>
+  <depend>xacro</depend>
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

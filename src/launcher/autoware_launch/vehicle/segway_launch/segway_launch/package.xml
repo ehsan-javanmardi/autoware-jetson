@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>segway_launch</name>
+  <version>0.1.0</version>
+  <description>Launch files for the Segway RMP Plus 401 vehicle.</description>
+  <maintainer email="ehsan.jmardi@gmail.com">Ehsan Javanmardi</maintainer>
+  <license>Apache-2.0</license>
+  <buildtool_depend>ament_cmake_auto</buildtool_depend>
+  <exec_depend>segway_vehicle_interface</exec_depend>
+  <exec_depend>segway_description</exec_depend>
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

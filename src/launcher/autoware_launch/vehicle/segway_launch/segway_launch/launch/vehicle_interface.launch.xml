@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<!--
+  Vehicle interface for the Segway RMP Plus 401. Selected by vehicle_model:=segway.
+
+  allow_control defaults to false, so a stack brought up with the default arguments
+  publishes vehicle status and cannot move the base. Pass allow_control:=true when you
+  intend to drive.
+-->
+<launch>
+  <arg name="allow_control" default="false"
+       description="true binds the SDK write paths; without it the base cannot move"/>
+  <arg name="config_file"
+       default="$(find-pkg-share segway_vehicle_interface)/config/segway.param.yaml"/>
+
+  <include file="$(find-pkg-share segway_vehicle_interface)/launch/segway_vehicle_interface.launch.xml">
+    <arg name="allow_control" value="$(var allow_control)"/>
+    <arg name="config_file" value="$(var config_file)"/>
+  </include>
+</launch>

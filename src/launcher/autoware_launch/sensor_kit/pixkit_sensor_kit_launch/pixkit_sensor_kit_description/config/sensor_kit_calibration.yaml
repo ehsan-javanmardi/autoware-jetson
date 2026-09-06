@@ -63,12 +63,19 @@ sensor_kit_base_link:
     pitch: 0.0
     yaw: 0.0
   livox_frame:
-    # Livox HAP, mounted on the sensor kit. PLACEHOLDER: x/y/z/rpy are the kit origin
-    # until the HAP is measured on the Segway. Ground segmentation reads z as height above
-    # base_link, so an unmeasured mount makes the ground plane wrong, not merely offset.
-    # The HAP's IMU shares this frame -- the driver publishes /livox/imu in frame_id
-    # livox_frame, so imu_corrector needs no separate extrinsic.
-    x: 0.0
+    # Livox HAP, mounted at the front of the chassis, laterally centred.
+    #
+    # x is DERIVED, not measured: wheelbase 0.456 + front overhang 0.108 = 0.564 m
+    # ahead of base_link, where the overhang is (length 0.672 - wheelbase 0.456) / 2 and
+    # assumes the axles sit symmetrically in the body. Relative to sensor_kit_base_link,
+    # which is already at the rear axle, that is the full 0.564.
+    #
+    # z is 0: the frame sits at chassis top, where the HAP is bolted. If the sensor is on
+    # a riser, or its optical centre is above its base, add that here.
+    #
+    # The HAP's IMU shares this frame - the driver publishes /livox/imu with frame_id
+    # livox_frame - so imu_corrector needs no separate extrinsic.
+    x: 0.564
     y: 0.0
     z: 0.0
     roll: 0.0
@@ -97,12 +104,15 @@ sensor_kit_base_link:
     yaw: -1.580
   gnss_link:
     # THIS is the frame gnss_poser uses (gnss_frame: gnss_link), not base_link2gnss in
-    # sensors_calibration.yaml, which builds an unused "gnss" frame. Values are relative to
-    # sensor_kit_base_link at z 1.4, so base_link -> gnss_link = (-0.30, 0, 0.9): the rear
-    # antenna, 0.30 m behind the rear axle and 0.90 m above the ground, measured 2026-08-21.
-    x: -0.30
+    # sensors_calibration.yaml, which builds an unused "gnss" frame.
+    #
+    # The u-blox ZED-F9R antenna is over the centre of the rear axle, which is exactly
+    # where base_link is, so x and y are zero. Relative to sensor_kit_base_link at
+    # chassis top, z 0 puts the antenna at 0.274 m above the ground; raise it if the
+    # antenna is on a riser.
+    x: 0.0
     y: 0.0
-    z: -0.5
+    z: 0.0
     roll: 0.0
     pitch: 0.0
     yaw: 0.0

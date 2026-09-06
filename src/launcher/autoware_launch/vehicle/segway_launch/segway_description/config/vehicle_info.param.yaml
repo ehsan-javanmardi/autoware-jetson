@@ -1,0 +1,41 @@
+/**:
+  ros__parameters:
+    # Segway RMP Plus 401. Structural figures are from Table 1, "System parameters",
+    # of the RMP Plus 401 user manual (2023-03-01), which is committed at
+    # docs/user-manual-for-rmp-plus-401-20230301.pdf. Manual figures are in mm.
+    #
+    #   size (L*W*H)                    672 * 617 * 274
+    #   wheelbase * track * clearance   456 * 545 * 58     (chassis at its lowest)
+    #   tyre                            8.5 inch
+    #   max speed                       3.56 m/s
+    #   max steering speed              2 rad/s
+    #   min turning radius              1.36 m
+
+    # 8.5 inch tyre -> 0.2159 m diameter.
+    wheel_radius: 0.108
+    wheel_width: 0.06        # ESTIMATE: the manual gives no tyre width.
+
+    wheel_base: 0.456        # manual: wheelbase
+    wheel_tread: 0.545       # manual: "wheel base", i.e. track width
+
+    # Overhangs are derived, not measured: (length - wheelbase) / 2 = (0.672 - 0.456)/2,
+    # which assumes the axles sit symmetrically in the body. Measure if it matters.
+    front_overhang: 0.108
+    rear_overhang: 0.108
+    # (width - track) / 2 = (0.617 - 0.545)/2
+    left_overhang: 0.036
+    right_overhang: 0.036
+
+    vehicle_height: 0.274    # manual: chassis height, without any sensor mast
+
+    # Footprint padding used by planning. Kept tight: this robot is 0.67 m long, so
+    # the Pixkit's ±0.5 m would have swallowed the vehicle itself.
+    min_height_offset: 0.0
+    max_height_offset: 0.4
+
+    # VIRTUAL. The RMP is differential-drive and has no steered axle. This is the
+    # steering angle the controller may command, which segway_vehicle_interface turns
+    # into a yaw rate via tan(steer)/wheel_base. Chosen so the resulting yaw rate stays
+    # inside the chassis limit of 2 rad/s at the 1.0 m/s the interface currently caps:
+    #   1.0 * tan(0.7) / 0.456 = 1.86 rad/s
+    max_steer_angle: 0.70    # radians

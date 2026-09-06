@@ -28,15 +28,15 @@ Settled 2026-09-06 before any code was written.
 - [x] **GNSS/RTK.** u-blox ZED-F9R over `ublox_dgnss` with ichimill NTRIP — see [GNSS_IMU_UBLOX_F9R.md](GNSS_IMU_UBLOX_F9R.md). RTK fix still unproven pending sky view.
 
 > [!IMPORTANT]
-> **`livox_frame` extrinsics are a placeholder** (kit origin, zero rotation). Measure the
-> HAP's mounting on the Segway before driving: ground segmentation reads `z` as height
-> above `base_link`, so an unmeasured mount misplaces the ground plane.
+> **Sensor heights are derived, not calibrated.** Positions come from the manual's geometry
+> plus where each sensor was fitted; riser and optical-centre heights are missing. See
+> [VEHICLE_SEGWAY.md](VEHICLE_SEGWAY.md#frames).
 
 ## 2. Vehicle
 
 - [x] **Segway vehicle interface.** `segway_vehicle_interface`, status verified at 50 Hz against the powered chassis. **Motion untested** — see [SEGWAY_VEHICLE_INTERFACE.md](SEGWAY_VEHICLE_INTERFACE.md).
 - [ ] **Retire `pix_driver`** from the launch path once the Segway interface works.
-- [ ] **Vehicle model.** Segway dimensions and `base_link` placement, replacing `pixkit_description`.
+- [x] **Vehicle model.** `segway_description` + `segway_launch` from the manual's Table 1. See [VEHICLE_SEGWAY.md](VEHICLE_SEGWAY.md).
 
 ## 3. Observability
 

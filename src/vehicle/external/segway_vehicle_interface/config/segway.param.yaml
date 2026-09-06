@@ -11,12 +11,17 @@
     allow_control: false
 
     # VIRTUAL. The RMP has no steered axle; this converts Autoware's bicycle-model
-    # steering angle into a yaw rate. It must match wheel_base in the vehicle
-    # description, or the controller and the chassis disagree about what a command means.
-    wheel_base: 0.55
+    # steering angle into a yaw rate. It MUST match wheel_base in segway_description's
+    # vehicle_info.param.yaml, or the controller and the chassis disagree about what a
+    # command means. 0.456 m is the manual's wheelbase (Table 1, System parameters).
+    wheel_base: 0.456
 
+    # The chassis itself can do 3.56 m/s and 2 rad/s (manual). These are the far lower
+    # limits this interface will command, and the web UI adjusts max_linear_mps at
+    # runtime. Raise deliberately: at 3.56 m/s a 28 kg base has real momentum, and the
+    # manual quotes ~1 m of braking distance from that speed under full load.
     max_linear_mps: 1.0
-    max_angular_radps: 1.0
+    max_angular_radps: 1.5
 
     # A differential base holds its last velocity indefinitely, so a planner that stops
     # publishing leaves it driving. Beyond this age the command is zeroed.
