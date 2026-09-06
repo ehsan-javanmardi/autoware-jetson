@@ -437,12 +437,38 @@ function renderFoxgloveTab() {
 // ------------------------------------------------------------ Autoware tab
 // Every control here is a write, so it goes to the control backend on 8843
 // rather than to this process, which has no ROS publishers at all.
-function ctrlDown(what) {
-  return notice('<b>The control backend is not running.</b> ' + what +
-    ' needs it, because this dashboard is read-only by construction: it creates no ROS ' +
-    'publishers and no service clients, so it cannot command the vehicle.' +
-    '<br><br>Start it from a terminal:<br>' +
-    '<code>ros2 run segway_web_control segway_web_control</code>', 'warn');
+function prereqs(what) {
+  // Show every prerequisite at once with its state. The previous version reported
+  // only the first missing one, so you fixed it, reloaded, and were told about the
+  // next -- which is a poor way to learn you needed three things.
+  const v = S.vehicle || {};
+  const items = [
+    ['Web UI', true,
+     'ros2 launch segway_web_ui web_ui.launch.xml'],
+    ['Control backend', !!(S.ctrl && S.ctrl.up),
+     'ros2 launch segway_web_control web_control.launch.xml'],
+    ['Vehicle interface', !!v.running,
+     'ros2 launch segway_vehicle_interface segway_vehicle_interface.launch.xml allow_control:=true'],
+  ];
+  const missing = items.filter(function (i) { return !i[1]; });
+  if (!missing.length) return '';
+
+  let out = '<div class="card"><h2>' + esc(what) + ' needs three things running</h2>' +
+    '<table class="kv">' + items.map(function (i) {
+      const badge = i[1] ? '<span class="badge ok">running</span>'
+                         : '<span class="badge err">not running</span>';
+      return '<tr><th>' + esc(i[0]) + '</th><td>' + badge + '</td></tr>';
+    }).join('') + '</table>';
+
+  out += '<p class="muted" style="margin-top:12px">Start the missing one' +
+    (missing.length > 1 ? 's' : '') + ' in a terminal:</p>';
+  out += missing.map(function (i) {
+    return '<p><code>' + esc(i[2]) + '</code></p>';
+  }).join('');
+  out += '<p class="muted">Each needs <code>source install/setup.bash</code> first. ' +
+    'The dashboard cannot start them itself: it creates no ROS publishers and no service ' +
+    'clients, which is what stops it commanding the vehicle.</p></div>';
+  return out;
 }
 
 function renderAutowareRun() {
@@ -454,7 +480,7 @@ function renderAutowareRun() {
     tile('Control backend', S.ctrl && S.ctrl.up ? 'running' : 'not running',
          'port 8843', S.ctrl && S.ctrl.up ? 'ok' : 'off') +
     '</div>';
-  if (!S.ctrl || !S.ctrl.up) return out + ctrlDown('Starting and stopping Autoware');
+  if (!S.ctrl || !S.ctrl.up) return out + prereqs('Starting and stopping Autoware');
   out += '<div class="card" style="margin-top:14px"><h2>Run</h2>' +
     '<p class="muted">Launches <code>autoware_kashiwa.sh</code>: vehicle_model segway, ' +
     'sensor_model segway_sensor_kit, Livox profile.</p>' +
@@ -466,7 +492,7 @@ function renderAutowareRun() {
 }
 
 function renderGoals() {
-  if (!S.ctrl || !S.ctrl.up) return ctrlDown('Setting destinations');
+  if (!S.ctrl || !S.ctrl.up) return prereqs('Setting destinations');
   const g = (S.autoware && S.autoware.goals) || {};
   const pts = g.points || [];
   let out = '<div class="card"><h2>Operation</h2><div class="btnrow">' +
@@ -512,12 +538,8 @@ function renderRemote() {
   const soc = v.battery_percent ?? 0;
   const batCls = soc < 20 ? 'err' : (soc < 40 ? 'warn' : 'ok');
 
-  if (!S.ctrl || !S.ctrl.up) return ctrlDown('Remote driving');
-  if (!v.running) {
-    return notice('<b>The vehicle interface is not running</b>, so there is nothing to ' +
-      'drive.<br><code>ros2 launch segway_vehicle_interface ' +
-      'segway_vehicle_interface.launch.xml allow_control:=true</code>', 'warn');
-  }
+  const gate = prereqs('Remote driving');
+  if (gate) return gate;
 
   let out = '<div class="armed-banner' + (armed ? '' : ' off') + '">' +
     (armed ? '⚠ ARMED — the vehicle moves while the joystick is held'

@@ -37,6 +37,21 @@ When Autoware is not running the tabs say so rather than showing blank panels �
 Vehicle tab prints the command to start the interface, and the Foxglove tab the command to
 start the bridge.
 
+## Three processes, and the Remote drive tab needs all of them
+
+| | Command | Port |
+|---|---|---|
+| The page | `ros2 launch segway_web_ui web_ui.launch.xml` | 8842 |
+| The buttons | `ros2 launch segway_web_control web_control.launch.xml` | 8843 |
+| The chassis | `ros2 launch segway_vehicle_interface segway_vehicle_interface.launch.xml allow_control:=true` | — |
+
+The Hardware and Foxglove tabs need only the first. Autoware and Remote drive need all
+three, and the tabs list every prerequisite with its state rather than reporting only the
+first missing one — otherwise you start one, reload, and are told about the next.
+
+`./autoware_kashiwa.sh` starts the vehicle interface itself, so with the full stack running
+only the two web processes remain to launch.
+
 ## Read-only by construction
 
 This process creates **no ROS publishers and no service clients**. It subscribes, it pings,
