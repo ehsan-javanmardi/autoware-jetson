@@ -2,13 +2,19 @@
 <!--
   Vehicle interface for the Segway RMP Plus 401. Selected by vehicle_model:=segway.
 
-  allow_control defaults to false, so a stack brought up with the default arguments
-  publishes vehicle status and cannot move the base. Pass allow_control:=true when you
-  intend to drive.
+  allow_control defaults to TRUE here, unlike the package's own launch file. Launching
+  the full Autoware stack means intending to drive: a stack that plans a route, engages
+  and commands control while the motors are unbound looks healthy at every layer and
+  simply does not move, which is a worse failure than an obvious one. The E-stop, the
+  RC and the chassis enable switch are the real safeguards, not this argument.
+
+  For sensor or perception work with no possibility of motion, launch the interface
+  directly instead - segway_vehicle_interface.launch.xml still defaults to read-only,
+  where the SDK's write paths are never bound at all.
 -->
 <launch>
-  <arg name="allow_control" default="false"
-       description="true binds the SDK write paths; without it the base cannot move"/>
+  <arg name="allow_control" default="true"
+       description="false unbinds the SDK write paths, so the base cannot move"/>
   <arg name="config_file"
        default="$(find-pkg-share segway_vehicle_interface)/config/segway.param.yaml"/>
 

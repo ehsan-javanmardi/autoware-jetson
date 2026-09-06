@@ -12,6 +12,21 @@ ros2 launch segway_vehicle_interface segway_vehicle_interface.launch.xml
 ros2 launch segway_vehicle_interface segway_vehicle_interface.launch.xml allow_control:=true
 ```
 
+### Two defaults, deliberately different
+
+| Launched via | `allow_control` | Because |
+|---|---|---|
+| `segway_vehicle_interface.launch.xml` directly | **false** | Launching the interface on its own is for looking at the chassis. Nothing should move. |
+| `./autoware_kashiwa.sh` (`vehicle_model:=segway`) | **true** | Launching the full stack means intending to drive. |
+
+The second default was chosen deliberately after the first caused a real trap: Autoware
+plans a route, engages, and commands control, every layer reports healthy — and the robot
+does not move, because the SDK's write functions were never bound. A stack that silently
+cannot move is worse than one that obviously cannot.
+
+The safeguards that matter are the chassis E-stop, the RC's enable switch, and the
+watchdog below. Not a launch argument.
+
 ## What it publishes
 
 | Topic | Type | Rate |
