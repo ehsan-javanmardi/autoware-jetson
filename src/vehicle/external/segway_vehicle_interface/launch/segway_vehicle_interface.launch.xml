@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="config_file"
+       default="$(find-pkg-share segway_vehicle_interface)/config/segway.param.yaml"/>
+  <arg name="allow_control" default="false"
+       description="true binds the SDK write paths; without it the node cannot move the base"/>
+
+  <node pkg="segway_vehicle_interface" exec="segway_vehicle_interface"
+        name="segway_vehicle_interface" output="screen">
+    <param from="$(var config_file)"/>
+    <param name="allow_control" value="$(var allow_control)"/>
+  </node>
+</launch>

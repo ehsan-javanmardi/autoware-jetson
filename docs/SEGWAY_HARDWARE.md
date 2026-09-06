@@ -2,8 +2,35 @@
 
 Notes for driving the Segway chassis from the Jetson AGX Orin.
 
-State as of 2026-09-05. **The link is not working** — the USB-serial converter drops off
+State as of 2026-09-05. **Superseded: see [Resolved](#resolved-2026-09-06).** **The link is not working** — the USB-serial converter drops off
 the bus. See [Current status](#current-status).
+
+## Resolved 2026-09-06
+
+**The chassis replies.** With the vehicle powered on, the same read-only probe that
+returned `0xffff` for everything now returns real values:
+
+```
+central_version : 0x2028
+motor_version   : 0x2028
+host_version    : 0x2027      <- the SDK's own, as before
+bat_soc         : 46 %
+bat_mvol        : 36440 mV
+vehicle_meter   : 2982
+```
+
+So the fault was never the wiring, the converter or the baud rate — the chassis was not
+powered. The three "remaining causes" listed below were all wrong, and are kept only
+because the diagnostic path is worth remembering: everything in them was consistent with
+the evidence at the time.
+
+Note the SDK still prints `Obtaining the chassis firmware version number timed out` during
+`init_control_ctrl()`. That is a startup race, not a fault: the versions read correctly a
+second or two later. Do not treat that line alone as evidence of a dead link — read a
+version instead.
+
+The vehicle interface built on this is documented in
+[SEGWAY_VEHICLE_INTERFACE.md](SEGWAY_VEHICLE_INTERFACE.md).
 
 ## References
 

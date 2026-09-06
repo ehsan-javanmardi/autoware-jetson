@@ -68,6 +68,11 @@ frames:
 RViz: the bridge, why the topic allow list is deliberate rather than `.*`, and how to change
 what is exposed.
 
+**[SEGWAY_VEHICLE_INTERFACE.md](SEGWAY_VEHICLE_INTERFACE.md)** — Autoware's vehicle
+interface for the RMP: how a bicycle-model steering command becomes a differential-drive
+yaw rate, the three safety properties, and why the vendor headers cannot be trusted about
+which symbols exist.
+
 **[LIVOX_HAP.md](LIVOX_HAP.md)** — The Livox HAP: what had to be vendored and why a plain
 `colcon build` could not do it alone, the JSON that holds the device address, the
 `xfer_format` that decides whether Autoware can read the cloud at all, and why the IMU

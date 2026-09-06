@@ -34,7 +34,7 @@ Settled 2026-09-06 before any code was written.
 
 ## 2. Vehicle
 
-- [ ] **Segway vehicle interface.** New package: Autoware `control_cmd` in, vehicle status and odometry out, wrapping `libctrl_arm64-v8a.so`. **Blocked:** the chassis does not reply — re-probed 2026-09-06 as `tlab` and as root, every value `0xffff`. See [SEGWAY_HARDWARE.md](SEGWAY_HARDWARE.md).
+- [x] **Segway vehicle interface.** `segway_vehicle_interface`, status verified at 50 Hz against the powered chassis. **Motion untested** — see [SEGWAY_VEHICLE_INTERFACE.md](SEGWAY_VEHICLE_INTERFACE.md).
 - [ ] **Retire `pix_driver`** from the launch path once the Segway interface works.
 - [ ] **Vehicle model.** Segway dimensions and `base_link` placement, replacing `pixkit_description`.
 
