@@ -93,7 +93,7 @@ source "$AUTOWARE_WS/install/setup.bash"
 # EXTRA_ARGS comes last so that repeating one of these on the command line overrides it:
 # ros2 launch takes the final value when an argument is given more than once.
 ros2 launch autoware_launch autoware.launch.xml \
-    vehicle_model:=pixkit \
+    vehicle_model:=segway \
     sensor_model:=pixkit_sensor_kit \
     map_path:="$MAP_DIR" \
     pointcloud_map_file:="$PCD_FILE" \

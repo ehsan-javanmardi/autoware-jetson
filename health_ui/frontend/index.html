@@ -2,28 +2,36 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Autoware — Jetson / Segway</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Segway Autoware</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
   <header>
-    <div class="brand">Autoware <small id="vehicle-name">Jetson / Segway</small></div>
+    <div class="brand">
+      <span class="logo"></span>
+      <span class="brand-text">Segway&nbsp;<b>Autoware</b></span>
+    </div>
     <div class="pill"><span class="dot" id="conn-dot"></span><span id="conn-text">connecting…</span></div>
-    <div id="header-pills" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+    <div id="header-pills" class="pills"></div>
     <div class="spacer"></div>
-    <nav>
-      <button data-view="overview" class="on">Overview</button>
-      <button data-view="devices">Devices</button>
-      <button data-view="events">Events</button>
-      <button data-view="vehicle">Vehicle</button>
-      <button data-view="foxglove">Foxglove</button>
-    </nav>
+    <div class="pill" id="ctrl-pill" title="control backend: everything that can change the vehicle">
+      <span class="dot" id="ctrl-dot"></span><span id="ctrl-text">control…</span>
+    </div>
   </header>
+
+  <nav class="tabs" id="tabs">
+    <button data-tab="hardware" class="on"><span class="ti">▦</span>Hardware</button>
+    <button data-tab="foxglove"><span class="ti">◈</span>Foxglove</button>
+    <button data-tab="autoware"><span class="ti">◉</span>Autoware</button>
+    <button data-tab="remote"><span class="ti">✥</span>Remote drive</button>
+  </nav>
+
+  <nav class="subtabs" id="subtabs"></nav>
 
   <div class="layout">
     <main id="main"></main>
-    <aside class="card rail">
+    <aside class="card rail" id="rail-card">
       <h2>Active problems <span class="badge" id="prob-count">0</span></h2>
       <div class="list" id="rail"></div>
     </aside>

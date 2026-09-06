@@ -1,6 +1,10 @@
 /**:
   ros__parameters:
-    serial_port: ttyUSB0
+    # /dev/segway is a udev symlink (99-segway-serial.rules) rather than ttyUSBn.
+    # The converter re-enumerates on every replug and does not come back on the same
+    # number: it was observed disconnecting from ttyUSB0 and returning as ttyUSB1, which
+    # presents as a chassis that has stopped replying rather than as a missing port.
+    serial_port: segway
 
     # Empty uses SEGWAY_SDK_LIB, then the built-in default. The vendor library is not
     # redistributable, so it is not vendored into this repository.

@@ -6,13 +6,20 @@ One page at **`http://<jetson-ip>:8842`**, with tabs, replacing the separate das
 ros2 launch autoware_health_ui health_ui.launch.xml
 ```
 
-| Tab | Shows |
-|---|---|
-| Overview | Autoware's diagnostic module tree, and what is unhealthy |
-| Devices | Every sensor: reachable, publishing, at what rate |
-| Events | The diagnostic event log |
-| Vehicle | Segway chassis: mode, speed, yaw rate, battery, link state |
-| Foxglove | Whether the bridge is up, and which topic groups it exposes |
+| Tab | Sub-tab | Shows |
+|---|---|---|
+| **Hardware** | Sensors | Every sensor: reachable, publishing, at what rate |
+| | Vehicle chassis | Segway link, control mode, battery, speed |
+| **Foxglove** | | Bridge state and the address to connect the app to |
+| **Autoware** | Run | Start and stop Autoware |
+| | Health | The diagnostic module tree, and what is unhealthy |
+| | Events | The diagnostic event log |
+| | Destinations | Engage, stop, and the goal sequencer |
+| **Remote drive** | | Hold-to-drive teleop, enable/disable, and the e-stop |
+
+Health checking sits **inside** the Autoware tab rather than beside it, because it is only
+meaningful when Autoware is running; hardware health is a different question and lives in
+the Hardware tab, which works whether Autoware is up or not.
 
 When Autoware is not running the tabs say so rather than showing blank panels — the
 Vehicle tab prints the command to start the interface, and the Foxglove tab the command to

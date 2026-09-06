@@ -325,81 +325,233 @@ function renderRail() {
 
 /* ----------------------------------------------------------------- render */
 
-// ---------------------------------------------------------------- Vehicle tab
-// Reads /api/vehicle, which reads ROS. Nothing here touches the chassis: the Segway
-// SDK does not arbitrate serial access, and a second opener degrades the link for
-// segway_vehicle_interface while reading 0xffff itself.
-function renderVehicle() {
-  const v = S.vehicle;
-  if (!v) return '<div class="card"><h2>Vehicle</h2><p class="muted">loading…</p></div>';
-  if (!v.running) {
-    return '<div class="card"><h2>Vehicle</h2>' +
-      '<p class="muted">The vehicle interface is not publishing.' +
-      (v.reason ? ' (' + esc(v.reason) + ')' : '') + '</p>' +
-      '<p class="muted">Start it with:<br><code>ros2 launch segway_vehicle_interface ' +
-      'segway_vehicle_interface.launch.xml</code></p></div>';
-  }
-  const present = v.chassis_present;
-  const rows = [
-    ['Chassis', present ? 'replying' : 'NOT replying (values read 0xffff)'],
-    ['Control mode', v.control_mode || '—'],
-    ['Speed', (v.speed_mps ?? 0).toFixed(3) + ' m/s'],
-    ['Yaw rate', (v.yaw_rate ?? 0).toFixed(3) + ' rad/s'],
-    ['Battery', (v.battery_percent ?? 0) + ' %  (' + (v.battery_volts ?? 0) + ' V)'],
-    ['Data age', (v.age_s ?? 0) + ' s'],
-  ];
-  return '<div class="card"><h2>Vehicle <span class="badge">Segway RMP Plus 401</span></h2>' +
-    '<table class="kv">' + rows.map(function (r) {
-      return '<tr><th>' + esc(r[0]) + '</th><td>' + esc(String(r[1])) + '</td></tr>';
-    }).join('') + '</table>' +
-    (present ? '' : '<p class="muted">The serial link is open but the chassis is not ' +
-      'answering. Check that the vehicle is powered on.</p>') +
-    '</div>';
+
+
+// ============================================================== tab routing
+// Four top-level tabs; Autoware carries sub-tabs. The old single-level `view`
+// still drives the diagnostic renderers, so it is derived from the pair rather
+// than replaced, which keeps renderOverview/renderModule/renderEvents intact.
+const TABS = {
+  hardware: { label: 'Hardware', subs: [['sensors', 'Sensors'], ['chassis', 'Vehicle chassis']] },
+  foxglove: { label: 'Foxglove', subs: [] },
+  autoware: { label: 'Autoware', subs: [['run', 'Run'], ['health', 'Health'], ['events', 'Events'], ['goals', 'Destinations']] },
+  remote:   { label: 'Remote drive', subs: [] },
+};
+S.tab = S.tab || 'hardware';
+S.sub = S.sub || 'sensors';
+
+function renderSubtabs() {
+  const el = document.getElementById('subtabs');
+  const subs = (TABS[S.tab] || {}).subs || [];
+  el.innerHTML = subs.map(function (s) {
+    return '<button data-sub="' + s[0] + '"' + (S.sub === s[0] ? ' class="on"' : '') + '>' +
+           esc(s[1]) + '</button>';
+  }).join('');
 }
 
-// --------------------------------------------------------------- Foxglove tab
-function renderFoxglove() {
-  const f = S.foxglove;
-  if (!f) return '<div class="card"><h2>Foxglove</h2><p class="muted">loading…</p></div>';
-  const host = location.hostname;
-  const state = f.bridge_running
-    ? '<span class="badge ok">running</span>'
-    : '<span class="badge err">not running</span>';
-  let out = '<div class="card"><h2>Foxglove bridge ' + state + '</h2>';
-  if (f.bridge_running) {
-    out += '<p>Connect the Foxglove app to <code>ws://' + esc(host) + ':' +
-           f.bridge_port + '</code></p>';
-  } else {
-    out += '<p class="muted">Start it with:<br><code>ros2 launch foxglove_bridge ' +
-           'foxglove_bridge_launch.xml port:=8765 ' +
-           'topic_whitelist:="$(./foxglove/build_whitelist.py)"</code></p>';
+function tile(label, value, sub, cls) {
+  return '<div class="tile ' + (cls || '') + '"><div class="lab">' + esc(label) +
+         '</div><div class="val">' + esc(value) + '</div>' +
+         (sub ? '<div class="sub">' + esc(sub) + '</div>' : '') + '</div>';
+}
+
+function notice(text, cls) {
+  return '<div class="notice ' + (cls || '') + '">' + text + '</div>';
+}
+
+// ------------------------------------------------------------ Hardware tab
+function renderChassis() {
+  const v = S.vehicle;
+  if (!v) return '<div class="card"><p class="muted">loading…</p></div>';
+  if (!v.running) {
+    return notice('<b>The vehicle interface is not running.</b> Nothing is reading the ' +
+      'Segway, so there is no chassis data to show.' +
+      '<br><br>Start it from a terminal:<br>' +
+      '<code>ros2 launch segway_vehicle_interface segway_vehicle_interface.launch.xml</code>' +
+      '<br><br>Without <code>allow_control:=true</code> it publishes status and cannot ' +
+      'move the base.', 'warn');
   }
-  if (f.error) out += '<p class="muted">config: ' + esc(f.error) + '</p>';
-  out += '</div><div class="card"><h2>Exposed topic groups</h2>' +
-    '<p class="muted">Editing this restarts the bridge, which is a write path, so it ' +
-    'lives in the control backend rather than here. This tab is read-only.</p>';
-  out += '<table class="kv">' + (f.groups || []).map(function (g) {
-    const badge = g.always ? '<span class="badge">always</span>'
-                           : (g.enabled ? '<span class="badge ok">on</span>'
-                                        : '<span class="badge">off</span>');
-    return '<tr><th>' + esc(g.label) + ' ' + badge + '</th><td class="muted">' +
-           esc((g.topics || []).join(', ')) + '</td></tr>';
-  }).join('') + '</table></div>';
+  const present = v.chassis_present;
+  const soc = v.battery_percent == null ? 0 : v.battery_percent;
+  const batCls = soc < 20 ? 'err' : (soc < 40 ? 'warn' : 'ok');
+  const mode = v.control_mode || '—';
+  let out = '<div class="tiles">' +
+    tile('Chassis link', present ? 'replying' : 'no reply', present ? '' : 'values read 0xffff',
+         present ? 'ok' : 'err') +
+    tile('Control mode', mode, mode === 'autonomous' ? 'motors enabled' : 'motors disabled',
+         mode === 'autonomous' ? 'warn' : 'ok') +
+    tile('Battery', soc + ' %', (v.battery_volts ?? 0) + ' V', batCls) +
+    tile('Speed', (v.speed_mps ?? 0).toFixed(2) + ' m/s',
+         'yaw ' + (v.yaw_rate ?? 0).toFixed(2) + ' rad/s', 'ok') +
+    '</div>';
+  if (!present) {
+    out += notice('The serial port is open but the chassis is not answering. Check that ' +
+      'the vehicle and its controller are powered on. If the USB cable was moved, the ' +
+      'converter may have re-enumerated — the <code>/dev/segway</code> symlink handles ' +
+      'that, but the chassis still has to be on.', 'err');
+  }
+  out += '<div class="card" style="margin-top:14px"><h2>Detail</h2><table class="kv">' +
+    '<tr><th>Data age</th><td>' + esc(v.age_s ?? '—') + ' s</td></tr>' +
+    '<tr><th>Reported speed</th><td>' + (v.speed_mps ?? 0).toFixed(3) + ' m/s</td></tr>' +
+    '<tr><th>Reported yaw rate</th><td>' + (v.yaw_rate ?? 0).toFixed(3) + ' rad/s</td></tr>' +
+    '</table></div>';
+  return out;
+}
+
+// ------------------------------------------------------------ Foxglove tab
+function renderFoxgloveTab() {
+  const f = S.foxglove;
+  if (!f) return '<div class="card"><p class="muted">loading…</p></div>';
+  const host = location.hostname;
+  const url = 'ws://' + host + ':' + (f.bridge_port || 8765);
+  let out = '<div class="tiles">' +
+    tile('Bridge', f.bridge_running ? 'running' : 'not running',
+         'port ' + (f.bridge_port || 8765), f.bridge_running ? 'ok' : 'off') +
+    tile('Topic groups', String((f.groups || []).filter(function (g) { return g.enabled; }).length) +
+         ' of ' + (f.groups || []).length, 'exposed to clients', 'ok') +
+    '</div>';
+  if (f.bridge_running) {
+    out += '<div class="card" style="margin-top:14px"><h2>Connect</h2>' +
+      '<p>In the Foxglove app choose <b>Open connection → Foxglove WebSocket</b> and enter:</p>' +
+      '<p><code style="font-size:15px">' + esc(url) + '</code></p>' +
+      '<p class="muted">This is a WebSocket, not a web page — opening it in a browser ' +
+      'will not work. Use the Foxglove iPad app or app.foxglove.dev.</p></div>';
+  } else {
+    out += notice('<b>The bridge is not running.</b> Start it from a terminal:<br>' +
+      '<code>ros2 launch foxglove_bridge foxglove_bridge_launch.xml port:=8765 ' +
+      'topic_whitelist:="$(./foxglove/build_whitelist.py)"</code>', 'warn');
+  }
+  out += '<div class="card" style="margin-top:14px"><h2>Exposed topic groups</h2>' +
+    '<table class="kv">' + (f.groups || []).map(function (g) {
+      const b = g.always ? '<span class="badge">always</span>'
+                         : (g.enabled ? '<span class="badge ok">on</span>'
+                                      : '<span class="badge">off</span>');
+      return '<tr><th>' + esc(g.label) + ' ' + b + '</th><td class="muted">' +
+             esc((g.topics || []).join(', ')) + '</td></tr>';
+    }).join('') + '</table>' +
+    '<p class="muted">Changing the selection restarts the bridge, which is a write, so it ' +
+    'lives in the control backend rather than here.</p></div>';
+  return out;
+}
+
+// ------------------------------------------------------------ Autoware tab
+// Every control here is a write, so it goes to the control backend on 8843
+// rather than to this process, which has no ROS publishers at all.
+function ctrlDown(what) {
+  return notice('<b>The control backend is not running.</b> ' + what +
+    ' needs it, because this dashboard is read-only by construction: it creates no ROS ' +
+    'publishers and no service clients, so it cannot command the vehicle.' +
+    '<br><br>Start it from a terminal:<br>' +
+    '<code>ros2 run autoware_web_control autoware_web_control</code>', 'warn');
+}
+
+function renderAutowareRun() {
+  const a = S.autoware || {};
+  const up = a.autoware_running;
+  let out = '<div class="tiles">' +
+    tile('Autoware', up ? 'running' : 'not running',
+         up ? (a.node_count || 0) + ' nodes' : 'nothing launched', up ? 'ok' : 'off') +
+    tile('Control backend', S.ctrl && S.ctrl.up ? 'running' : 'not running',
+         'port 8843', S.ctrl && S.ctrl.up ? 'ok' : 'off') +
+    '</div>';
+  if (!S.ctrl || !S.ctrl.up) return out + ctrlDown('Starting and stopping Autoware');
+  out += '<div class="card" style="margin-top:14px"><h2>Run</h2>' +
+    '<p class="muted">Launches <code>autoware_kashiwa.sh</code>: vehicle_model segway, ' +
+    'sensor_model pixkit_sensor_kit, Livox profile.</p>' +
+    '<div class="btnrow">' +
+    '<button class="act go" data-act="autoware_start"' + (up ? ' disabled' : '') + '>Start Autoware</button>' +
+    '<button class="act stop" data-act="autoware_stop"' + (up ? '' : ' disabled') + '>Stop Autoware</button>' +
+    '</div></div>';
+  return out;
+}
+
+function renderGoals() {
+  if (!S.ctrl || !S.ctrl.up) return ctrlDown('Setting destinations');
+  const g = (S.autoware && S.autoware.goals) || {};
+  const pts = g.points || [];
+  let out = '<div class="card"><h2>Operation</h2><div class="btnrow">' +
+    '<button class="act go" data-act="engage">Engage</button>' +
+    '<button class="act stop" data-act="disengage">Stop</button>' +
+    '<button class="act" data-act="mode_auto">Autonomous</button>' +
+    '<button class="act" data-act="mode_manual">Manual</button>' +
+    '</div></div>';
+  out += '<div class="card" style="margin-top:14px"><h2>Destinations <span class="badge">' +
+    pts.length + '</span></h2>' +
+    '<p class="muted">Add goals in order. Repeat mode returns from the last to the first ' +
+    'and keeps going until stopped.</p>' +
+    '<table class="kv">' + (pts.length ? pts.map(function (pt, i) {
+      return '<tr><th>' + (i + 1) + '</th><td>' + esc(pt.label || (pt.x + ', ' + pt.y)) + '</td></tr>';
+    }).join('') : '<tr><td class="muted">none set</td></tr>') + '</table>' +
+    '<div class="btnrow">' +
+    '<button class="act" data-act="goal_add">Add current pose</button>' +
+    '<button class="act" data-act="goal_clear">Clear</button>' +
+    '</div>' +
+    '<div class="btnrow">' +
+    '<button class="act" data-act="seq_step"' + (g.mode === 'step' ? ' disabled' : '') + '>Step-by-step</button>' +
+    '<button class="act" data-act="seq_route"' + (g.mode === 'route' ? ' disabled' : '') + '>Single route</button>' +
+    '<button class="act" data-act="repeat_toggle">' + (g.repeat ? 'Repeat: ON' : 'Repeat: off') + '</button>' +
+    '</div>' +
+    '<div class="btnrow">' +
+    '<button class="act go" data-act="run_goals">Run</button>' +
+    '<button class="act stop" data-act="stop_goals">Stop sequence</button>' +
+    '</div></div>';
+  return out;
+}
+
+// -------------------------------------------------------- Remote drive tab
+function renderRemote() {
+  const v = S.vehicle || {};
+  const r = (S.autoware && S.autoware.remote) || {};
+  let out = '<div class="tiles">' +
+    tile('Remote drive', r.enabled ? 'ENABLED' : 'disabled',
+         r.enabled ? 'the vehicle will move' : 'controls inert', r.enabled ? 'warn' : 'off') +
+    tile('Speed', (v.speed_mps ?? 0).toFixed(2) + ' m/s', 'limit ' + (r.max_speed ?? '—') + ' m/s', 'ok') +
+    tile('Chassis', v.chassis_present ? 'replying' : 'no reply', '', v.chassis_present ? 'ok' : 'err') +
+    '</div>';
+  if (!S.ctrl || !S.ctrl.up) return out + ctrlDown('Remote driving');
+  out += '<div class="card" style="margin-top:14px;text-align:center">' +
+    '<button class="estop" data-act="estop">E-STOP</button>' +
+    '<p class="muted" style="margin-top:10px">Zeroes the command and disables the motors.</p>' +
+    '</div>';
+  out += '<div class="card" style="margin-top:14px"><h2>Remote drive</h2>' +
+    notice('Hold-to-drive: the vehicle moves only while a direction control is held. ' +
+      'Releasing it, losing the network, or closing this page all stop the vehicle, ' +
+      'because the interface watchdog zeroes the command after 0.5 s without one.', '') +
+    '<div class="btnrow">' +
+    '<button class="act ' + (r.enabled ? 'stop' : 'go') + '" data-act="remote_toggle">' +
+    (r.enabled ? 'Disable remote drive' : 'Enable remote drive') + '</button>' +
+    '</div></div>';
   return out;
 }
 
 function render() {
+  const main = document.getElementById('main');
+  renderSubtabs();
+
+  // The problems rail belongs to Autoware's health view; elsewhere it is noise.
+  const railCard = document.getElementById('rail-card');
+  const wantRail = (S.tab === 'autoware' && (S.sub === 'health' || S.sub === 'events'));
+  if (railCard) railCard.style.display = wantRail ? '' : 'none';
+
+  if (S.tab === 'hardware') {
+    main.innerHTML = (S.sub === 'chassis') ? renderChassis() : renderDevices();
+  } else if (S.tab === 'foxglove') {
+    main.innerHTML = renderFoxgloveTab();
+  } else if (S.tab === 'autoware') {
+    if (S.sub === 'run') main.innerHTML = renderAutowareRun();
+    else if (S.sub === 'goals') main.innerHTML = renderGoals();
+    else if (S.sub === 'events') main.innerHTML = renderEvents();
+    else if (S.view === 'module' && S.stream) main.innerHTML = renderModule();
+    else main.innerHTML = renderOverview();
+  } else if (S.tab === 'remote') {
+    main.innerHTML = renderRemote();
+  }
+
   renderHeader();
   renderRail();
-  const main = document.getElementById('main');
-  if (S.view === 'devices') main.innerHTML = renderDevices();
-  else if (S.view === 'vehicle') main.innerHTML = renderVehicle();
-  else if (S.view === 'foxglove') main.innerHTML = renderFoxglove();
-  else if (S.view === 'events') main.innerHTML = renderEvents();
-  else if (S.view === 'module' && S.stream) main.innerHTML = renderModule();
-  else main.innerHTML = renderOverview();
-  document.querySelectorAll('nav button').forEach((b) =>
-    b.classList.toggle('on', b.dataset.view === (S.view === 'module' ? 'overview' : S.view)));
+  document.querySelectorAll('nav.tabs button').forEach(function (b) {
+    b.classList.toggle('on', b.dataset.tab === S.tab);
+  });
 }
 
 async function loadDetail(id) {
@@ -417,13 +569,43 @@ function openModule(key) {
 
 /* ------------------------------------------------------------------ wiring */
 
+// Which pollers each tab needs. Polling only while a tab is open keeps a tablet
+// left on the Foxglove tab from waking the ROS bridge every second.
+function pollFor(tab, sub) {
+  if (tab === 'hardware') { (sub === 'chassis') ? pollVehicle() : pollDevices(); }
+  else if (tab === 'foxglove') pollFoxglove();
+  else if (tab === 'autoware' || tab === 'remote') { pollControl(); pollVehicle(); }
+}
+
 document.addEventListener('click', (e) => {
+  const tab = e.target.closest('nav.tabs button');
+  if (tab) {
+    S.tab = tab.dataset.tab;
+    const subs = (TABS[S.tab] || {}).subs || [];
+    S.sub = subs.length ? subs[0][0] : null;
+    if (S.tab === 'autoware' && S.sub === 'health') S.view = 'overview';
+    pollFor(S.tab, S.sub);
+    render();
+    return;
+  }
+
+  const sub = e.target.closest('nav.subtabs button');
+  if (sub) {
+    S.sub = sub.dataset.sub;
+    if (S.tab === 'autoware') S.view = (S.sub === 'events') ? 'events' : 'overview';
+    pollFor(S.tab, S.sub);
+    render();
+    return;
+  }
+
+  // Every write goes to the control backend. This process cannot perform any of them.
+  const act = e.target.closest('[data-act]');
+  if (act) { doAction(act.dataset.act, act); return; }
+
   const nav = e.target.closest('nav button');
-  if (nav) {
+  if (nav && nav.dataset.view) {
     S.view = nav.dataset.view;
     if (S.view === 'devices') pollDevices();
-    if (S.view === 'vehicle') pollVehicle();
-    if (S.view === 'foxglove') pollFoxglove();
     render();
     return;
   }
@@ -482,6 +664,60 @@ async function pollFoxglove() {
   if (S.view === 'foxglove') foxTimer = setTimeout(pollFoxglove, 5000);
 }
 
+// --------------------------------------------------- control backend bridge
+// Everything that can change the vehicle lives in a separate process on 8843.
+// If it is not running the UI still works; the control tabs say so.
+const CTRL = () => location.protocol + '//' + location.hostname + ':8843';
+
+let ctrlTimer = null;
+async function pollControl() {
+  try {
+    const r = await fetch(CTRL() + '/api/state', { signal: AbortSignal.timeout(2000) });
+    S.autoware = await r.json();
+    S.ctrl = { up: true };
+  } catch (e) {
+    S.ctrl = { up: false };
+    S.autoware = S.autoware || {};
+  }
+  const dot = document.getElementById('ctrl-dot');
+  const txt = document.getElementById('ctrl-text');
+  if (dot) dot.className = 'dot' + (S.ctrl.up ? ' ok' : '');
+  if (txt) txt.textContent = S.ctrl.up ? 'control ready' : 'control offline';
+  if (S.tab === 'autoware' || S.tab === 'remote') render();
+  clearTimeout(ctrlTimer);
+  if (S.tab === 'autoware' || S.tab === 'remote') ctrlTimer = setTimeout(pollControl, 2000);
+}
+
+const CONFIRM = {
+  autoware_start: 'Start Autoware?',
+  autoware_stop: 'Stop Autoware?',
+  engage: 'ENGAGE — the vehicle will begin to move. Continue?',
+  mode_auto: 'Switch to AUTONOMOUS? This enables the motors.',
+  remote_toggle: 'Toggle remote drive?',
+  run_goals: 'Run the destination sequence? The vehicle will move.',
+};
+
+async function doAction(name, el) {
+  // Anything that can cause motion asks first. The e-stop never does: a confirm
+  // dialog between the operator and stopping the robot is the wrong trade.
+  if (CONFIRM[name] && !confirm(CONFIRM[name])) return;
+  if (el) el.disabled = true;
+  try {
+    const r = await fetch(CTRL() + '/api/action', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: name }),
+    });
+    const j = await r.json();
+    if (!j.ok) alert('Failed: ' + (j.error || 'unknown'));
+  } catch (e) {
+    alert('Control backend unreachable: ' + e);
+  } finally {
+    if (el) el.disabled = false;
+    pollControl();
+  }
+}
+
 let devTimer = null;
 async function pollDevices() {
   const r = await fetch('/api/devices');
@@ -490,6 +726,9 @@ async function pollDevices() {
   clearTimeout(devTimer);
   if (S.view === 'devices') devTimer = setTimeout(pollDevices, 3000);
 }
+
+pollFor(S.tab, S.sub);
+pollControl();
 
 function connect() {
   const es = new EventSource('/api/stream');
