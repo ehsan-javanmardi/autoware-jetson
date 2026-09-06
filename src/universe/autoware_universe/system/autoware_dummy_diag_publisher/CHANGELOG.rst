@@ -246,7 +246,7 @@ Changelog for package autoware_dummy_diag_publisher
   * autoware_joy_controller -> joy_controller
   * autoware_error_monitor -> system_error_monitor(launch)
   * autoware_state_monitor -> ad_service_state_monitor
-  * autoware_web_controller -> web_controller
+  * segway_web_controller -> web_controller
   * remove autoware_version
   * remove autoware_rosbag_recorder
   * autoware\_*_rviz_plugin -> tier4\_*_rviz_plugin

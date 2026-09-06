@@ -3,7 +3,7 @@ from glob import glob
 
 from setuptools import setup
 
-package_name = "autoware_health_ui"
+package_name = "segway_web_ui"
 
 
 def data_tree(dest, source):
@@ -36,7 +36,7 @@ setup(
     license="Apache License 2.0",
     entry_points={
         "console_scripts": [
-            "health_ui = autoware_health_ui.__main__:main",
+            "segway_web_ui = segway_web_ui.__main__:main",
         ],
     },
 )

@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package format="3">
-  <name>autoware_web_control</name>
+  <name>segway_web_control</name>
   <version>0.1.0</version>
   <description>Write paths for the web UI: Autoware lifecycle, operation mode, and teleop.</description>
   <maintainer email="ehsan.jmardi@gmail.com">Ehsan Javanmardi</maintainer>

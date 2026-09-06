@@ -68,4 +68,4 @@ day-to-day work. Turn RViz on with the launch script's `rviz:=true`.
 `racing_kart_v2x` was expected to have Foxglove material to reuse. It does not — the
 repository contains no Foxglove configuration of any kind. What it does have is
 `v2x_web_monitor`, built on stdlib `http.server` plus Server-Sent Events, the same
-architecture as `health_ui`. That informed the web UI work rather than this.
+architecture as `web_ui`. That informed the web UI work rather than this.

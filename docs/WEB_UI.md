@@ -3,8 +3,20 @@
 One page at **`http://<jetson-ip>:8842`**, with tabs, replacing the separate dashboards.
 
 ```bash
-ros2 launch autoware_health_ui health_ui.launch.xml
+ros2 launch segway_web_ui      web_ui.launch.xml       # the page,    :8842
+ros2 launch segway_web_control web_control.launch.xml  # the buttons, :8843
 ```
+
+Two packages, at two layers, easy to confuse with a third:
+
+| Package | What it is |
+|---|---|
+| `segway_vehicle_interface` | The **chassis driver**. Talks to the Segway over `/dev/segway`. The only thing allowed to open that port. No web anything. |
+| `segway_web_ui` | The **page**. Subscribes to ROS, serves HTML. Creates no publishers or service clients, so it cannot command the vehicle. |
+| `segway_web_control` | The **write paths**. Owns every publisher and service client the UI needs: Autoware lifecycle, control mode, teleop. |
+
+You only ever open `:8842` in a browser. `:8843` is a JSON API the page calls in the
+background; visiting it directly returns `{"error": "not found"}`.
 
 | Tab | Sub-tab | Shows |
 |---|---|---|
@@ -74,6 +86,6 @@ nothing is broken, not absent, and is graded accordingly.
 
 | Port | Process | Writes? |
 |---|---|---|
-| 8842 | `autoware_health_ui` — this dashboard | no, by construction |
+| 8842 | `segway_web_ui` — this dashboard | no, by construction |
 | 8765 | `foxglove_bridge` | no |
 | 8843 | control backend (goals, engage, limits) | **yes** |

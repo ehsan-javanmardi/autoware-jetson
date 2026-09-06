@@ -2,9 +2,9 @@
 <!--
   Read-only Autoware diagnostics dashboard.
 
-    ros2 launch autoware_health_ui health_ui.launch.xml
-    ros2 launch autoware_health_ui health_ui.launch.xml port:=9000 probe:=false
-    ros2 launch autoware_health_ui health_ui.launch.xml host:=127.0.0.1
+    ros2 launch segway_web_ui web_ui.launch.xml
+    ros2 launch segway_web_ui web_ui.launch.xml port:=9000 probe:=false
+    ros2 launch segway_web_ui web_ui.launch.xml host:=127.0.0.1
 
   Runs in the foreground and stops with Ctrl-C, like any other ros2 launch. To
   leave it running independently of any Autoware session, use
@@ -29,7 +29,7 @@
   <!-- Plain argv, not ROS parameters: the same entry point is driven from
        ros2 launch, from run.sh and from the autoware-health command, and argv
        is the only one of those three that all of them can reach. -->
-  <node pkg="autoware_health_ui" exec="health_ui" name="autoware_health_ui"
+  <node pkg="segway_web_ui" exec="segway_web_ui" name="segway_web_ui"
         output="screen"
         args="--host $(var host) --port $(var port) $(var probe_arg) $(var config_arg)"/>
 </launch>

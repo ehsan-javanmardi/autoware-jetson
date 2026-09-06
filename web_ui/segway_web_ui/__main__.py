@@ -1,4 +1,4 @@
-"""Entry point: python3 -m autoware_health_ui [--host H] [--port P] [--config F]"""
+"""Entry point: python3 -m segway_web_ui [--host H] [--port P] [--config F]"""
 
 import argparse
 import signal

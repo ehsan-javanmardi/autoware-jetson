@@ -1,6 +1,6 @@
 """ROS side of the control backend: every write path the web UI can reach.
 
-Deliberately a separate process from the dashboard. autoware_health_ui creates no
+Deliberately a separate process from the dashboard. segway_web_ui creates no
 publishers and no service clients at all, so it cannot command the vehicle even if
 something in it misbehaves; everything that can move the robot lives here instead.
 
@@ -53,7 +53,7 @@ MAX_STEER = 0.70         # rad, matches max_steer_angle in segway_description
 
 class ControlBackend(Node):
     def __init__(self) -> None:
-        super().__init__("autoware_web_control")
+        super().__init__("segway_web_control")
 
         self.lock = threading.Lock()
         self.autoware_proc: subprocess.Popen | None = None

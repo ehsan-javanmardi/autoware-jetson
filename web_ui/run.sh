@@ -9,7 +9,7 @@
 # AUTOWARE_WS overrides the workspace whose install/ is sourced.
 set -eo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# health_ui/ lives inside the Autoware workspace, so derive it rather than
+# web_ui/ lives inside the Autoware workspace, so derive it rather than
 # assuming a path under $HOME.
 AUTOWARE_WS="${AUTOWARE_WS:-$(cd "$HERE/.." && pwd)}"
 
@@ -38,4 +38,4 @@ fi
 
 cd "$HERE"
 echo "rmw       : $RMW_IMPLEMENTATION"
-exec python3 -m autoware_health_ui "$@"
+exec python3 -m segway_web_ui "$@"

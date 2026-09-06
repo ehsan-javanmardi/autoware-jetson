@@ -17,7 +17,7 @@ web page — nothing else. It lives inside this workspace and sources
 └───────────────────────────────────┬───────────────────────────────────────────┘
                                     │  subscribe only
                         ┌───────────▼────────────┐
-                        │  autoware_health_ui    │  graph cache, rate meters,
+                        │  segway_web_ui    │  graph cache, rate meters,
                         │  + ping / TCP prober   │  event log, ping prober
                         └───────────┬────────────┘
                                     │  HTTP + Server-Sent Events
@@ -46,13 +46,13 @@ launch.
 
 ### `ros2 launch`, for a one-off look
 
-It is an `ament_python` package (`autoware_health_ui`), so it launches like
+It is an `ament_python` package (`segway_web_ui`), so it launches like
 anything else in this workspace — in the foreground, stopping with Ctrl-C:
 
 ```bash
-ros2 launch autoware_health_ui health_ui.launch.xml
-ros2 launch autoware_health_ui health_ui.launch.xml port:=9000 probe:=false
-ros2 launch autoware_health_ui health_ui.launch.xml host:=127.0.0.1
+ros2 launch segway_web_ui web_ui.launch.xml
+ros2 launch segway_web_ui web_ui.launch.xml port:=9000 probe:=false
+ros2 launch segway_web_ui web_ui.launch.xml host:=127.0.0.1
 ```
 
 | Argument | Default | |
@@ -63,7 +63,7 @@ ros2 launch autoware_health_ui health_ui.launch.xml host:=127.0.0.1
 | `config` | *(packaged)* | a different device inventory |
 
 This needs the package built once (`colcon build --symlink-install
---packages-select autoware_health_ui`). The other two entry points below do not,
+--packages-select segway_web_ui`). The other two entry points below do not,
 which is the reason all three exist: the thing you reach for to diagnose a
 workspace should not itself be waiting on that workspace to build.
 
@@ -100,11 +100,11 @@ To put it on `PATH` (once per machine):
 
 ```bash
 mkdir -p ~/.local/bin
-ln -sf "$PWD/health_ui/bin/autoware-health" ~/.local/bin/autoware-health
+ln -sf "$PWD/web_ui/bin/autoware-health" ~/.local/bin/autoware-health
 ```
 
-Or call it directly at `health_ui/bin/autoware-health`, or run
-`health_ui/run.sh` in the foreground. Start it before or after Autoware — it
+Or call it directly at `web_ui/bin/autoware-health`, or run
+`web_ui/run.sh` in the foreground. Start it before or after Autoware — it
 picks the graph up whenever it appears, and survives Autoware restarting.
 
 ### Which one to use
@@ -130,7 +130,7 @@ start at all:
 
 ```bash
 mkdir -p ~/.config/systemd/user
-cp health_ui/tools/autoware-health-ui.service ~/.config/systemd/user/
+cp web_ui/tools/autoware-health-ui.service ~/.config/systemd/user/
 systemctl --user daemon-reload
 systemctl --user enable --now autoware-health-ui
 sudo loginctl enable-linger $USER      # start at boot, not at first login
@@ -245,10 +245,10 @@ python3 test_model.py    # offline checks: tree building, module attribution,
                          # graph-id guard, latching, muting, path shapes
 ```
 
-The Python lives in `autoware_health_ui/`, the browser side in `frontend/`.
+The Python lives in `segway_web_ui/`, the browser side in `frontend/`.
 Because the workspace builds with `--symlink-install`, editing either takes
 effect on the next start with no rebuild; only *adding* a file needs
-`colcon build --packages-select autoware_health_ui` again.
+`colcon build --packages-select segway_web_ui` again.
 
 ## Limitations
 

@@ -2,7 +2,7 @@ from glob import glob
 import os
 from setuptools import find_packages, setup
 
-package_name = "autoware_web_control"
+package_name = "segway_web_control"
 
 setup(
     name=package_name,
@@ -20,6 +20,6 @@ setup(
     description="Write paths for the web UI.",
     license="Apache-2.0",
     entry_points={"console_scripts": [
-        "autoware_web_control = autoware_web_control.__main__:main",
+        "segway_web_control = segway_web_control.__main__:main",
     ]},
 )

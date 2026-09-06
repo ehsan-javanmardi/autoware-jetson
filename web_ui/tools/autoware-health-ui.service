@@ -1,7 +1,7 @@
 # Autoware health dashboard as a systemd *user* service.
 #
 #   mkdir -p ~/.config/systemd/user
-#   cp health_ui/tools/autoware-health-ui.service ~/.config/systemd/user/
+#   cp web_ui/tools/autoware-health-ui.service ~/.config/systemd/user/
 #   systemctl --user daemon-reload
 #   systemctl --user enable --now autoware-health-ui
 #
@@ -19,12 +19,12 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=%h/workspace/pix_autoware/health_ui
-ExecStart=%h/workspace/pix_autoware/health_ui/run.sh
+WorkingDirectory=%h/workspace/pix_autoware/web_ui
+ExecStart=%h/workspace/pix_autoware/web_ui/run.sh
 
 # run.sh pins these itself, but setting them here documents the coupling: the
 # dashboard MUST use the same middleware as Autoware or it sees an empty graph.
-# AUTOWARE_WS is not set: run.sh derives it from health_ui/'s own location.
+# AUTOWARE_WS is not set: run.sh derives it from web_ui/'s own location.
 Environment=RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 Environment=CYCLONEDDS_URI=file://%h/cyclonedds.xml
 

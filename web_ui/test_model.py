@@ -4,7 +4,7 @@ Duck-types the ROS messages so this runs with no ROS environment at all.
 """
 import sys, time, types, yaml
 sys.path.insert(0, ".")
-from autoware_health_ui.model import HealthModel, OK, WARN, ERROR, STALE
+from segway_web_ui.model import HealthModel, OK, WARN, ERROR, STALE
 
 def N(path): return types.SimpleNamespace(path=path)
 def L(parent, name): return types.SimpleNamespace(parent=parent, name=name)

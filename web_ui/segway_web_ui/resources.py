@@ -1,7 +1,7 @@
 """Locating the frontend and config in both layouts this package runs from.
 
 Run straight out of the tree (`./run.sh`, `autoware-health`) the data sits next
-to the module, at health_ui/frontend and health_ui/config. Run as an installed
+to the module, at web_ui/frontend and web_ui/config. Run as an installed
 ROS package (`ros2 launch`) it sits in the package share directory instead.
 
 `__file__` is resolved with realpath first, because this workspace builds with
@@ -12,7 +12,7 @@ needed.
 
 import os
 
-PACKAGE = "autoware_health_ui"
+PACKAGE = "segway_web_ui"
 
 
 def resource_dir(name):

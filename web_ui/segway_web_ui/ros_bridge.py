@@ -133,7 +133,7 @@ class RateMeter:
 
 class HealthBridge(Node):
     def __init__(self, model, cfg):
-        super().__init__("autoware_health_ui")
+        super().__init__("segway_web_ui")
         self.model = model
         s = cfg.get("settings", {})
         self.window = float(s.get("rate_window_s", 10.0))

@@ -17,7 +17,7 @@
   <arg name="address" default="0.0.0.0"/>
   <arg name="topic_whitelist" default=""
        description="regex list; empty means derive it from topics_config"/>
-  <arg name="topics_config" default="$(find-pkg-share autoware_health_ui)/../../../../foxglove/topics.yaml"
+  <arg name="topics_config" default="$(find-pkg-share segway_web_ui)/../../../../foxglove/topics.yaml"
        description="group definitions shared with the web UI"/>
 
   <!-- send_buffer_limit: a slow tablet on wifi must not build an unbounded queue on

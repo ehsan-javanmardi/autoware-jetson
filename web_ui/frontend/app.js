@@ -442,7 +442,7 @@ function ctrlDown(what) {
     ' needs it, because this dashboard is read-only by construction: it creates no ROS ' +
     'publishers and no service clients, so it cannot command the vehicle.' +
     '<br><br>Start it from a terminal:<br>' +
-    '<code>ros2 run autoware_web_control autoware_web_control</code>', 'warn');
+    '<code>ros2 run segway_web_control segway_web_control</code>', 'warn');
 }
 
 function renderAutowareRun() {
