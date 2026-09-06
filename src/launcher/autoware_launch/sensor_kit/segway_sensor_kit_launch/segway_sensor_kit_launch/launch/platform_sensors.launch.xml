@@ -1,0 +1,48 @@
+<?xml version="1.0"?>
+<!--
+  Sensor DRIVERS only, in the namespace Autoware expects.
+
+  segway.sh starts these and keeps them for the life of the platform; Autoware then runs
+  with launch_sensing_driver:=false and supplies the processing chain around them.
+
+  The namespace matters and is easy to get wrong. gnss.launch.xml pushes a relative
+  "gnss", so launching it at the root puts the receiver on /gnss/fix while Autoware's
+  own gnss_poser waits on /sensing/gnss/fix. The result is two gnss_poser nodes, one of
+  them starved, and a localization stack with no GNSS.
+
+  This file therefore pushes "sensing" and starts only the drivers. gnss_poser,
+  imu_corrector and the pointcloud preprocessing all belong to Autoware's sensing chain,
+  and starting them here would duplicate them.
+-->
+<launch>
+  <arg name="launch_lidar" default="true"/>
+  <arg name="launch_gnss" default="true"/>
+
+  <group>
+    <push-ros-namespace namespace="sensing"/>
+
+    <!-- The Livox launch remaps to absolute /sensing/... topics, which a namespace
+         push does not affect, so it is correct either way. It is inside the group so
+         that everything the platform starts is described in one place. -->
+    <group if="$(var launch_lidar)">
+      <include file="$(find-pkg-share segway_sensor_kit_launch)/launch/livox_hap.launch.xml"/>
+    </group>
+
+    <group if="$(var launch_gnss)">
+      <push-ros-namespace namespace="gnss"/>
+
+      <include file="$(find-pkg-share ublox_dgnss)/launch/ublox_rover_hpposllh_navsatfix.launch.py">
+        <arg name="device_family" value="F9R"/>
+      </include>
+
+      <!-- Credentials come from NTRIP_USERNAME / NTRIP_PASSWORD; source ~/.ichimill.env
+           first. This repository is public, so they are not here. -->
+      <include file="$(find-pkg-share ublox_dgnss)/launch/ntrip_client.launch.py">
+        <arg name="use_https" value="false"/>
+        <arg name="host" value="ntrip.ales-corp.co.jp"/>
+        <arg name="port" value="2101"/>
+        <arg name="mountpoint" value="RTCM32M7S"/>
+      </include>
+    </group>
+  </group>
+</launch>

@@ -85,8 +85,10 @@ trap shutdown INT TERM
 say "Segway platform"
 
 if [ "$WITH_SENSORS" = "true" ]; then
-    start "livox HAP"        livox.log  ros2 launch segway_sensor_kit_launch livox_hap.launch.xml
-    start "GNSS + RTK"       gnss.log   ros2 launch segway_sensor_kit_launch gnss.launch.xml
+    # One launch file, because the namespace has to be right: it pushes /sensing so
+    # the drivers land where Autoware's own sensing chain reads them.
+    start "sensor drivers"   sensors.log \
+        ros2 launch segway_sensor_kit_launch platform_sensors.launch.xml
 else
     warn "sensors skipped (WITH_SENSORS=false)"
 fi

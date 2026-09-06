@@ -43,6 +43,40 @@ Autoware plus its own sensor drivers and vehicle interface, plus the web UI and 
 in one process tree. Ctrl-C stops the lot. Use it when a single Autoware run is the point
 and nothing needs to outlive it.
 
+## Who starts the sensors
+
+This surprises people, so it is worth stating plainly.
+
+| | Started by |
+|---|---|
+| Sensor **drivers** (Livox, u-blox, NTRIP) | **`segway.sh`** |
+| The `/sensing` chain — `gnss_poser`, `imu_corrector`, pointcloud preprocessing | **Autoware** |
+
+`launch_sensing_driver:=false` disables only the drivers. `launch_sensing` stays true, so
+Autoware still builds the processing chain around whatever is already publishing. That is
+what lets Autoware start and stop without the sensors restarting with it.
+
+### The namespace has to match, and it is easy to get wrong
+
+`gnss.launch.xml` pushes a **relative** `gnss` namespace. Launched at the root it puts the
+receiver on `/gnss/fix`, while Autoware's own `gnss_poser` waits on `/sensing/gnss/fix`.
+You then get **two `gnss_poser` nodes, one of them starved**, and a localization stack with
+no GNSS — with no error that names the cause.
+
+`platform_sensors.launch.xml` exists for this. It pushes `sensing` and starts **only the
+drivers**, leaving `gnss_poser`, `imu_corrector` and the pointcloud preprocessing to
+Autoware, which would otherwise duplicate them.
+
+The Livox launch is unaffected either way because its remaps are absolute, but it goes
+through the same file so that everything the platform starts is described in one place.
+
+If GNSS looks dead with Autoware running, check this first:
+
+```bash
+ros2 node list | grep gnss_poser        # expect exactly one, under /sensing
+ros2 topic info /sensing/gnss/fix       # expect one publisher
+```
+
 ## Why they must not overlap
 
 > [!WARNING]
