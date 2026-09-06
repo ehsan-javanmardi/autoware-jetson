@@ -24,6 +24,21 @@
     <xacro:property name="calibration" value="${xacro.load_yaml('$(arg config_dir)/sensor_kit_calibration.yaml')}"/>
 
     <!-- lidar -->
+    <!-- Livox HAP. Plain link and joint. See docs/VEHICLE_SEGWAY.md -->
+    <link name="livox_frame"/>
+    <joint name="livox_frame_joint" type="fixed">
+      <parent link="sensor_kit_base_link"/>
+      <child link="livox_frame"/>
+      <origin
+        xyz="${calibration['sensor_kit_base_link']['livox_frame']['x']}
+             ${calibration['sensor_kit_base_link']['livox_frame']['y']}
+             ${calibration['sensor_kit_base_link']['livox_frame']['z']}"
+        rpy="${calibration['sensor_kit_base_link']['livox_frame']['roll']}
+             ${calibration['sensor_kit_base_link']['livox_frame']['pitch']}
+             ${calibration['sensor_kit_base_link']['livox_frame']['yaw']}"
+      />
+    </joint>
+
     <xacro:VLS-128 parent="sensor_kit_base_link" name="velodyne_top" topic="/points_raw" hz="10" samples="220" gpu="$(arg gpu)">
       <origin
         xyz="${calibration['sensor_kit_base_link']['velodyne_top_base_link']['x']}

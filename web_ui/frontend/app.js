@@ -494,7 +494,10 @@ function renderAutowareRun() {
     '<div class="btnrow">' +
     '<button class="act go" data-act="autoware_start"' + (up ? ' disabled' : '') + '>Start Autoware</button>' +
     '<button class="act stop" data-act="autoware_stop"' + (up ? '' : ' disabled') + '>Stop Autoware</button>' +
-    '</div></div>';
+    '</div>' +
+    (a.autoware_log ? '<p class="muted" style="margin-top:10px">Output: <code>' +
+      esc(a.autoware_log) + '</code> — check it if a start does not take.</p>' : '') +
+    '</div>';
   return out;
 }
 

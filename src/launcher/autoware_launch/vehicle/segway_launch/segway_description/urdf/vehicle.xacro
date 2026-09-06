@@ -1,28 +1,25 @@
 <?xml version="1.0"?>
 <robot name="vehicle" xmlns:xacro="http://ros.org/wiki/xacro">
-  <xacro:macro name="vehicle" params="">
-    <!-- No mesh for the RMP Plus 401, so the body is drawn as a box from the manual's
-         672 x 617 x 274 mm. base_link sits at the rear axle centre on the ground, the
-         Autoware convention, so the box is pushed forward by half the wheelbase and up
-         by half its height. -->
-    <link name="base_link"/>
+  <!-- Top level, not inside an xacro macro. See docs/VEHICLE_SEGWAY.md. -->
+  <!-- Keep comments here short and plain. See docs/VEHICLE_SEGWAY.md. -->
 
-    <link name="vehicle_body">
-      <visual>
-        <origin xyz="0 0 0" rpy="0 0 0"/>
-        <geometry>
-          <box size="0.672 0.617 0.274"/>
-        </geometry>
-        <material name="segway_grey">
-          <color rgba="0.25 0.27 0.30 0.9"/>
-        </material>
-      </visual>
-    </link>
+  <link name="base_link"/>
 
-    <joint name="base_link_to_vehicle_body" type="fixed">
-      <parent link="base_link"/>
-      <child link="vehicle_body"/>
-      <origin xyz="0.228 0 0.137" rpy="0 0 0"/>
-    </joint>
-  </xacro:macro>
+  <link name="vehicle_body">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.672 0.617 0.274"/>
+      </geometry>
+      <material name="segway_grey">
+        <color rgba="0.25 0.27 0.30 0.9"/>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="base_link_to_vehicle_body" type="fixed">
+    <parent link="base_link"/>
+    <child link="vehicle_body"/>
+    <origin xyz="0.228 0 0.137" rpy="0 0 0"/>
+  </joint>
 </robot>

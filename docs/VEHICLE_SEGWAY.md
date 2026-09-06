@@ -64,6 +64,46 @@ return is classified as below ground.
 controller planning for a 1.9 m wheelbase turns a 0.456 m robot far more sharply than it
 intends.
 
+## Two traps in the URDF
+
+Both cost a working TF tree, and neither fails in a way that points at the cause.
+
+### Keep links at top level, not inside a macro
+
+`tier4_vehicle_launch/urdf/vehicle.xacro` **includes** the vehicle description; it never
+instantiates a macro. Anything wrapped in `<xacro:macro>` is therefore silently never
+emitted. `base_link` then does not exist, `robot_state_publisher` dies with
+
+```
+Failed to build tree, parent link base_link of joint baselink_gnss not found
+```
+
+and the entire URDF TF chain is missing, so no sensor frame resolves.
+
+### Keep comments in these files plain
+
+The whole xacro output becomes the `robot_description` parameter, and `ros2 launch`
+infers that parameter's type by parsing the string. Ordinary prose in a comment is enough
+to break it, and the launch dies with `Failed to convert` followed by the entire URDF —
+which reads like an XML problem and is not.
+
+Colons are the worst offender, because `key: value` is YAML mapping syntax. Double quotes
+also break it. Square brackets appear to be tolerated, since existing comments contain
+`[0,1]`, but there is no reason to risk it.
+
+Keep comments in `vehicle.xacro` and `sensor_kit.xacro` to a short pointer at this file,
+and put the explanation here where it costs nothing.
+
+### The Livox frame has to be declared
+
+`sensor_kit_calibration.yaml` holding a `livox_frame` entry does nothing on its own —
+`sensor_kit.xacro` must declare the link and the joint that consume it. Without that the
+driver publishes its cloud in a frame nothing defines, the crop box that moves it into
+`base_link` cannot transform it, and the point cloud never reaches the rest of the stack.
+
+There is no `livox_description` xacro for the HAP, so it is a plain link rather than a
+driver macro.
+
 ## Steering, on a robot that cannot steer
 
 The RMP is differential-drive: no steered axle, no steering angle to report. Autoware

@@ -57,6 +57,7 @@ class ControlBackend(Node):
 
         self.lock = threading.Lock()
         self.autoware_proc: subprocess.Popen | None = None
+        self.autoware_log = os.path.expanduser("~/.segway/logs/autoware.log")
         self.remote_enabled = False
         self.in_situ = False
         self.max_speed = DEFAULT_MAX_SPEED
@@ -106,12 +107,19 @@ class ControlBackend(Node):
             # which is the whole reason the two are separate processes.
             cmd += ["launch_sensing_driver:=false", "launch_vehicle_interface:=false"]
 
+        # Not DEVNULL. Autoware started from a button has no terminal, so discarding
+        # its output means a failed launch reports nothing at all - which is how a
+        # robot_state_publisher crash went unnoticed here until the ROS launch log was
+        # read by hand.
+        log_dir = os.path.expanduser("~/.segway/logs")
+        os.makedirs(log_dir, exist_ok=True)
+        self.autoware_log = os.path.join(log_dir, "autoware.log")
         with self.lock:
             # start_new_session so the whole launch tree can be signalled as a group.
             # ros2 launch spawns many children; killing only the shell orphans them.
+            fh = open(self.autoware_log, "wb")
             self.autoware_proc = subprocess.Popen(
-                cmd, cwd=REPO,
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                cmd, cwd=REPO, stdout=fh, stderr=subprocess.STDOUT,
                 start_new_session=True)
         self.get_logger().warn(
             "Autoware started from the web UI" +
@@ -253,6 +261,7 @@ class ControlBackend(Node):
         return {
             "autoware_running": self.autoware_running(),
             "hardware_owned_by_platform": self._hardware_already_up(),
+            "autoware_log": self.autoware_log,
             "remote": {"enabled": self.remote_enabled, "max_speed": self.max_speed,
                        "in_situ": self.in_situ},
             "control_mode": self.control_mode,
