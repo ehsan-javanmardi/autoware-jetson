@@ -77,7 +77,7 @@ the concatenate node copies them straight through; and the driver's own static t
 
    ```bash
    ros2 launch autoware_launch autoware.launch.xml \
-       vehicle_model:=pixkit sensor_model:=segway_sensor_kit \
+       vehicle_model:=segway sensor_model:=segway_sensor_kit \
        map_path:=$PWD/autoware_map
    # or override for a one-off:
    #   lidar_profile:=os1_128 os1_128_ip:=192.168.1.130 host_ip:=192.168.1.100

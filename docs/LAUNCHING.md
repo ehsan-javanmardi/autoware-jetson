@@ -8,7 +8,7 @@ chain can be followed by opening them in order.
 
 ```
 autoware.launch.xml                                     autoware_launch
-│   vehicle_model:=pixkit  sensor_model:=segway_sensor_kit
+│   vehicle_model:=segway  sensor_model:=segway_sensor_kit
 │
 ├── pointcloud_container.launch.py                      autoware_launch
 │      creates /pointcloud_container, EMPTY. Components are loaded into it

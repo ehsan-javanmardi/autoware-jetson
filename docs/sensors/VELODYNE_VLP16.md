@@ -22,7 +22,7 @@ detection, which is why their ranges and azimuth windows are clipped.
 
 ```bash
 ros2 launch autoware_launch autoware.launch.xml \
-    vehicle_model:=pixkit sensor_model:=segway_sensor_kit \
+    vehicle_model:=segway sensor_model:=segway_sensor_kit \
     map_path:=$PWD/autoware_map \
     lidar_profile:=velodyne
 ```

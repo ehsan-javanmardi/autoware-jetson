@@ -50,11 +50,14 @@ One page, tabs, replacing the separate dashboards. Shows "Autoware is not runnin
 graph is absent rather than blank panels.
 
 - [x] **Shell + tabs.** Overview / Devices / Events / Vehicle / Foxglove at :8842. See [WEB_UI.md](WEB_UI.md).
-- [ ] **Foxglove topic configuration** editable from the UI. Header button now deep-links Foxglove at the bridge; group toggles still to do.
+- [x] **Foxglove access from the UI.** Header button deep-links Foxglove at the bridge; the tab lists the exposed groups. Editing the groups from the UI is still to do.
 
 ## 5. Operator control
 
-Separate backend process. Everything here is a write path.
+`segway_web_control` on :8843. Everything here is a write path.
+
+**Remote drive is implemented but has never moved the robot.** The joystick, the
+Ackermann turning fix and spin-in-place are verified at the API level only.
 
 - [ ] **Goal setter** (backend scaffolding in place, sequencer not written) — single goal, ordered multi-goal, and repeat mode looping last→first until stopped.
 - [ ] **Sequencing mode switch** — step-by-step (advance on arrival) or single route with waypoints.
@@ -64,4 +67,4 @@ Separate backend process. Everything here is a write path.
 
 Not a phase. Every item above lands with its README written or revised in the same commit.
 
-- [ ] Revise the top-level README for the Jetson/Segway/Livox platform.
+- [x] Revise the top-level README for the Jetson/Segway/Livox platform.

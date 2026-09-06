@@ -98,7 +98,7 @@ ros2 launch autoware_launch autoware.launch.xml \
     map_path:="$MAP_DIR" \
     pointcloud_map_file:="$PCD_FILE" \
     lanelet2_map_file:="$LANELET_FILE" \
-    lidar_profile:=os1_128 \
+    lidar_profile:=livox \
     use_v2x_objects:=true \
     log_level:=debug \
     "${EXTRA_ARGS[@]}"

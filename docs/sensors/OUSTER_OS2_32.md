@@ -36,7 +36,7 @@ than introducing its own. Nothing downstream has to change when the units are sw
 
 ```bash
 ros2 launch autoware_launch autoware.launch.xml \
-    vehicle_model:=pixkit sensor_model:=segway_sensor_kit \
+    vehicle_model:=segway sensor_model:=segway_sensor_kit \
     map_path:=$PWD/autoware_map \
     lidar_profile:=os2_32
 ```
