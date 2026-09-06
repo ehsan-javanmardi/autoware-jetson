@@ -18,12 +18,12 @@
     
     <!-- fixposition Driver(fixposition) -->
     <group if="$(eval &quot;'$(var gnss_receiver)'=='fixposition'&quot;)">
-      <include file="$(find-pkg-share pixkit_sensor_kit_launch)/launch/fixposition.launch.xml" />
+      <include file="$(find-pkg-share segway_sensor_kit_launch)/launch/fixposition.launch.xml" />
     </group>
 
     <!-- Chc Driver(nmea_navsat_driver) -->
     <group if="$(eval &quot;'$(var gnss_receiver)'=='chc'&quot;)">
-      <include file="$(find-pkg-share pixkit_sensor_kit_launch)/launch/nmea_tcpclient_driver.launch.py" />
+      <include file="$(find-pkg-share segway_sensor_kit_launch)/launch/nmea_tcpclient_driver.launch.py" />
     </group>
 
 

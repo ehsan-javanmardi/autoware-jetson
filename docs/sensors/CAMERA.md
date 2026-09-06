@@ -17,10 +17,10 @@ pipeline expects.
 
 | What | File |
 | ---- | ---- |
-| Node | [`camera_launch.py`](../../src/launcher/autoware_launch/sensor_kit/pixkit_sensor_kit_launch/pixkit_sensor_kit_launch/launch/camera_launch.py) |
-| Parameters | [`params.yaml`](../../src/launcher/autoware_launch/sensor_kit/pixkit_sensor_kit_launch/pixkit_sensor_kit_launch/config/params.yaml) |
-| Namespace | [`sensing.launch.xml`](../../src/launcher/autoware_launch/sensor_kit/pixkit_sensor_kit_launch/pixkit_sensor_kit_launch/launch/sensing.launch.xml) |
-| Mounting position | `os_lidar_top2camera` in [`sensors_calibration.yaml`](../../src/launcher/autoware_launch/sensor_kit/pixkit_sensor_kit_launch/pixkit_sensor_kit_description/config/sensors_calibration.yaml) |
+| Node | [`camera_launch.py`](../../src/launcher/autoware_launch/sensor_kit/segway_sensor_kit_launch/segway_sensor_kit_launch/launch/camera_launch.py) |
+| Parameters | [`params.yaml`](../../src/launcher/autoware_launch/sensor_kit/segway_sensor_kit_launch/segway_sensor_kit_launch/config/params.yaml) |
+| Namespace | [`sensing.launch.xml`](../../src/launcher/autoware_launch/sensor_kit/segway_sensor_kit_launch/segway_sensor_kit_launch/launch/sensing.launch.xml) |
+| Mounting position | `os_lidar_top2camera` in [`sensors_calibration.yaml`](../../src/launcher/autoware_launch/sensor_kit/segway_sensor_kit_launch/segway_sensor_kit_description/config/sensors_calibration.yaml) |
 
 The camera is calibrated **relative to the lidar**, not to `base_link`, which is what
 projection-based traffic light recognition needs.

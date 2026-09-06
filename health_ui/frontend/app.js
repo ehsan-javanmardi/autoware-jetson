@@ -457,7 +457,7 @@ function renderAutowareRun() {
   if (!S.ctrl || !S.ctrl.up) return out + ctrlDown('Starting and stopping Autoware');
   out += '<div class="card" style="margin-top:14px"><h2>Run</h2>' +
     '<p class="muted">Launches <code>autoware_kashiwa.sh</code>: vehicle_model segway, ' +
-    'sensor_model pixkit_sensor_kit, Livox profile.</p>' +
+    'sensor_model segway_sensor_kit, Livox profile.</p>' +
     '<div class="btnrow">' +
     '<button class="act go" data-act="autoware_start"' + (up ? ' disabled' : '') + '>Start Autoware</button>' +
     '<button class="act stop" data-act="autoware_stop"' + (up ? '' : ' disabled') + '>Stop Autoware</button>' +
@@ -499,28 +499,68 @@ function renderGoals() {
 }
 
 // -------------------------------------------------------- Remote drive tab
+// Hold-to-drive. A button sends velocity only while it is held; releasing it,
+// the page closing, or the network dropping all stop the robot, because the
+// vehicle interface zeroes the command 0.5 s after the last one arrives. That
+// watchdog is what makes a phone safe to drive from at all, so the UI is built
+// around it rather than around a latch.
 function renderRemote() {
   const v = S.vehicle || {};
   const r = (S.autoware && S.autoware.remote) || {};
+  const armed = !!r.enabled;
+  const ready = S.ctrl && S.ctrl.up && v.chassis_present;
+
   let out = '<div class="tiles">' +
-    tile('Remote drive', r.enabled ? 'ENABLED' : 'disabled',
-         r.enabled ? 'the vehicle will move' : 'controls inert', r.enabled ? 'warn' : 'off') +
-    tile('Speed', (v.speed_mps ?? 0).toFixed(2) + ' m/s', 'limit ' + (r.max_speed ?? '—') + ' m/s', 'ok') +
-    tile('Chassis', v.chassis_present ? 'replying' : 'no reply', '', v.chassis_present ? 'ok' : 'err') +
+    tile('Remote drive', armed ? 'ARMED' : 'disarmed',
+         armed ? 'the vehicle will move' : 'controls inert', armed ? 'warn' : 'off') +
+    tile('Speed', (v.speed_mps ?? 0).toFixed(2) + ' m/s',
+         'limit ' + (r.max_speed ?? '—') + ' m/s', 'ok') +
+    tile('Chassis', v.chassis_present ? 'replying' : 'no reply',
+         v.control_mode || '', v.chassis_present ? 'ok' : 'err') +
+    tile('Battery', (v.battery_percent ?? 0) + ' %', (v.battery_volts ?? 0) + ' V',
+         (v.battery_percent ?? 0) < 20 ? 'err' : 'ok') +
     '</div>';
+
   if (!S.ctrl || !S.ctrl.up) return out + ctrlDown('Remote driving');
-  out += '<div class="card" style="margin-top:14px;text-align:center">' +
-    '<button class="estop" data-act="estop">E-STOP</button>' +
-    '<p class="muted" style="margin-top:10px">Zeroes the command and disables the motors.</p>' +
+  if (!v.running) {
+    return out + notice('<b>The vehicle interface is not running</b>, so there is nothing ' +
+      'to drive. Start it with <code>allow_control:=true</code>.', 'warn');
+  }
+
+  out += '<div class="armed-banner' + (armed ? '' : ' off') + '" style="margin-top:14px">' +
+    (armed ? '⚠ Remote drive is ARMED — the vehicle moves while a direction is held'
+           : '○ Remote drive is disarmed — arm it below to drive') + '</div>';
+
+  out += '<div class="drive-wrap" style="margin-top:14px">';
+
+  // --- left: the pad
+  out += '<div class="card"><h2>Drive</h2>' +
+    '<div class="dpad">' +
+    '<button class="fwd"   data-drive="fwd"  ' + (armed ? '' : 'disabled') + '>▲</button>' +
+    '<button class="left"  data-drive="left" ' + (armed ? '' : 'disabled') + '>◀</button>' +
+    '<button class="halt"  data-act="drive_halt">STOP</button>' +
+    '<button class="right" data-drive="right"' + (armed ? '' : 'disabled') + '>▶</button>' +
+    '<button class="back"  data-drive="back" ' + (armed ? '' : 'disabled') + '>▼</button>' +
+    '</div>' +
+    '<div class="speed-row"><span class="muted">Speed limit</span>' +
+    '<input type="range" id="spd" min="0.1" max="1.5" step="0.1" value="' +
+      (r.max_speed ?? 0.5) + '"' + (ready ? '' : ' disabled') + '>' +
+    '<span class="v" id="spdv">' + (r.max_speed ?? 0.5) + ' m/s</span></div>' +
+    '<p class="muted">Hold a direction to move. Release to stop.</p>' +
     '</div>';
-  out += '<div class="card" style="margin-top:14px"><h2>Remote drive</h2>' +
-    notice('Hold-to-drive: the vehicle moves only while a direction control is held. ' +
-      'Releasing it, losing the network, or closing this page all stop the vehicle, ' +
-      'because the interface watchdog zeroes the command after 0.5 s without one.', '') +
-    '<div class="btnrow">' +
-    '<button class="act ' + (r.enabled ? 'stop' : 'go') + '" data-act="remote_toggle">' +
-    (r.enabled ? 'Disable remote drive' : 'Enable remote drive') + '</button>' +
+
+  // --- right: arming and the e-stop
+  out += '<div class="card" style="text-align:center">' +
+    '<button class="estop" data-act="estop">E-STOP</button>' +
+    '<p class="muted" style="margin-top:12px">Zeroes the command and disables the ' +
+    'motors immediately. No confirmation.</p>' +
+    '<div class="btnrow" style="justify-content:center">' +
+    '<button class="act ' + (armed ? 'stop' : 'go') + '" data-act="remote_toggle"' +
+      (ready ? '' : ' disabled') + '>' +
+      (armed ? 'Disarm' : 'Arm remote drive') + '</button>' +
     '</div></div>';
+
+  out += '</div>';
   return out;
 }
 
@@ -679,6 +719,7 @@ async function pollControl() {
     S.ctrl = { up: false };
     S.autoware = S.autoware || {};
   }
+  updateFoxButton();
   const dot = document.getElementById('ctrl-dot');
   const txt = document.getElementById('ctrl-text');
   if (dot) dot.className = 'dot' + (S.ctrl.up ? ' ok' : '');
@@ -718,6 +759,93 @@ async function doAction(name, el) {
   }
 }
 
+// The header button deep-links Foxglove with the bridge address already filled
+// in: app.foxglove.dev honours ds=foxglove-websocket&ds.url=, which saves typing
+// a ws:// URL on a tablet. Disabled while the bridge is down, because a link
+// that opens Foxglove onto nothing is worse than a greyed-out one.
+function updateFoxButton() {
+  const a = document.getElementById('fox-btn');
+  if (!a) return;
+  const f = S.foxglove;
+  const up = f && f.bridge_running;
+  const ws = 'ws://' + location.hostname + ':' + ((f && f.bridge_port) || 8765);
+  if (up) {
+    a.className = 'fox-btn';
+    a.href = 'https://app.foxglove.dev/~/view?ds=foxglove-websocket&ds.url=' +
+             encodeURIComponent(ws);
+    a.title = 'open Foxglove connected to ' + ws;
+  } else {
+    a.className = 'fox-btn down';
+    a.removeAttribute('href');
+    a.title = 'the Foxglove bridge is not running';
+  }
+}
+
+// ------------------------------------------------------- hold-to-drive input
+// Held direction is streamed at 10 Hz. Nothing latches: the moment a pointer is
+// released, leaves the button, or the page is hidden, the stream stops and the
+// vehicle interface's 0.5 s watchdog brings the robot to a halt on its own.
+let driveTimer = null;
+let driveDir = null;
+
+function driveSend(dir) {
+  const spd = parseFloat((document.getElementById('spd') || {}).value || '0.5');
+  fetch(CTRL() + '/api/drive', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ dir: dir, speed: spd }),
+  }).catch(function () { driveStop(); });
+}
+
+function driveStart(dir, el) {
+  if (driveDir) return;
+  driveDir = dir;
+  if (el) el.classList.add('held');
+  driveSend(dir);
+  clearInterval(driveTimer);
+  driveTimer = setInterval(function () { driveSend(driveDir); }, 100);
+}
+
+function driveStop() {
+  if (!driveDir) return;
+  driveDir = null;
+  clearInterval(driveTimer); driveTimer = null;
+  document.querySelectorAll('.dpad button').forEach(function (b) { b.classList.remove('held'); });
+  fetch(CTRL() + '/api/drive', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ dir: 'stop', speed: 0 }),
+  }).catch(function () {});
+}
+
+document.addEventListener('pointerdown', function (e) {
+  const b = e.target.closest('[data-drive]');
+  if (b && !b.disabled) { e.preventDefault(); driveStart(b.dataset.drive, b); }
+});
+['pointerup', 'pointercancel', 'pointerleave'].forEach(function (ev) {
+  document.addEventListener(ev, function (e) {
+    if (e.target.closest && e.target.closest('[data-drive]')) driveStop();
+  });
+});
+// Backstops: a pointer released off the button, a hidden tab, or a closing page.
+window.addEventListener('blur', driveStop);
+document.addEventListener('visibilitychange', function () { if (document.hidden) driveStop(); });
+window.addEventListener('pagehide', driveStop);
+
+document.addEventListener('input', function (e) {
+  if (e.target && e.target.id === 'spd') {
+    const el = document.getElementById('spdv');
+    if (el) el.textContent = e.target.value + ' m/s';
+  }
+});
+document.addEventListener('change', function (e) {
+  if (e.target && e.target.id === 'spd') {
+    fetch(CTRL() + '/api/action', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'set_max_speed', value: parseFloat(e.target.value) }),
+    }).catch(function () {});
+  }
+});
+
 let devTimer = null;
 async function pollDevices() {
   const r = await fetch('/api/devices');
@@ -729,6 +857,7 @@ async function pollDevices() {
 
 pollFor(S.tab, S.sub);
 pollControl();
+pollFoxglove();
 
 function connect() {
   const es = new EventSource('/api/stream');

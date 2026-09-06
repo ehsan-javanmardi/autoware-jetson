@@ -205,7 +205,7 @@ device reachability and topic rates. See "Optional Autoware changes" below.
 Everything tunable lives in [`config/devices.yaml`](config/devices.yaml):
 device names, IPs, probe method (`icmp`, `tcp:<port>`, `none`), the topics each
 device feeds with their expected rates, and the `optional` flag. The IPs were
-seeded from `pixkit_sensor_kit_launch/launch/lidar.launch.xml`; the file is read
+seeded from `segway_sensor_kit_launch/launch/lidar.launch.xml`; the file is read
 at start-up and nothing is ever written back to the vehicle.
 
 Global knobs under `settings:` — `probe_interval_s` (10), `rate_window_s` (10),
@@ -223,7 +223,7 @@ would only deepen what it can show:
 | To gain | Change |
 | --- | --- |
 | Sensing as a *real* graph module, visible to Autoware's own fail-safe logic | new `autoware_launch/config/system/diagnostics/sensing.yaml` + one line in `autoware-main.yaml` |
-| Sensor-driver diagnostics aggregated per kit | `pixkit_sensor_kit_launch` has no `config/diagnostic_aggregator/sensor_kit.param.yaml`, though the sample kits do |
+| Sensor-driver diagnostics aggregated per kit | `segway_sensor_kit_launch` has no `config/diagnostic_aggregator/sensor_kit.param.yaml`, though the sample kits do |
 | Velodyne hardware health (temperature, motor RPM, via the sensor's HTTP interface) | `autoware_velodyne_monitor` is in the tree but is not launched anywhere |
 
 ## Developing without a vehicle

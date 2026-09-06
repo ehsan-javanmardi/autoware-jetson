@@ -344,7 +344,7 @@ doing its real job inside the receiver regardless.
 
 ### Launch changes — done
 
-Applied to `pixkit_sensor_kit_launch`; `gnss_receiver` now defaults to `ublox_dgnss`.
+Applied to `segway_sensor_kit_launch`; `gnss_receiver` now defaults to `ublox_dgnss`.
 
 | File | Change |
 |---|---|

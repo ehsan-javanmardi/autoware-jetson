@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="host" default="0.0.0.0"/>
+  <arg name="port" default="8843"/>
+  <node pkg="autoware_web_control" exec="autoware_web_control" name="autoware_web_control"
+        output="screen" args="--host $(var host) --port $(var port)"/>
+</launch>

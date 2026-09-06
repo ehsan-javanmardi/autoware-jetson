@@ -20,11 +20,11 @@ the default.
 
 | What | File |
 | ---- | ---- |
-| Receiver selection | [`gnss.launch.xml`](../../src/launcher/autoware_launch/sensor_kit/pixkit_sensor_kit_launch/pixkit_sensor_kit_launch/launch/gnss.launch.xml) — `gnss_receiver` is `ublox`, `septentrio`, `chc` or `fixposition` |
-| TCP endpoint | [`nmea_tcpclient_driver.yaml`](../../src/launcher/autoware_launch/sensor_kit/pixkit_sensor_kit_launch/pixkit_sensor_kit_launch/config/nmea_tcpclient_driver.yaml) |
-| IMU source | [`imu.launch.xml`](../../src/launcher/autoware_launch/sensor_kit/pixkit_sensor_kit_launch/pixkit_sensor_kit_launch/launch/imu.launch.xml) |
+| Receiver selection | [`gnss.launch.xml`](../../src/launcher/autoware_launch/sensor_kit/segway_sensor_kit_launch/segway_sensor_kit_launch/launch/gnss.launch.xml) — `gnss_receiver` is `ublox`, `septentrio`, `chc` or `fixposition` |
+| TCP endpoint | [`nmea_tcpclient_driver.yaml`](../../src/launcher/autoware_launch/sensor_kit/segway_sensor_kit_launch/segway_sensor_kit_launch/config/nmea_tcpclient_driver.yaml) |
+| IMU source | [`imu.launch.xml`](../../src/launcher/autoware_launch/sensor_kit/segway_sensor_kit_launch/segway_sensor_kit_launch/launch/imu.launch.xml) |
 | Antennas | **two**: rear = GNSS1 position, front = GNSS2 heading, measured from `base_link` |
-| Mounting position | `base_link2gnss` in [`sensors_calibration.yaml`](../../src/launcher/autoware_launch/sensor_kit/pixkit_sensor_kit_launch/pixkit_sensor_kit_description/config/sensors_calibration.yaml) — `x: -0.9, z: 0.3` |
+| Mounting position | `base_link2gnss` in [`sensors_calibration.yaml`](../../src/launcher/autoware_launch/sensor_kit/segway_sensor_kit_launch/segway_sensor_kit_description/config/sensors_calibration.yaml) — `x: -0.9, z: 0.3` |
 
 `imu.launch.xml` selects `/sensing/gnss/chc/imu`; two alternatives are commented out in that file,
 the Ouster's built-in IMU (`/sensing/lidar/top/ouster/imu`) and the Fixposition

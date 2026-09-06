@@ -94,7 +94,7 @@ source "$AUTOWARE_WS/install/setup.bash"
 # ros2 launch takes the final value when an argument is given more than once.
 ros2 launch autoware_launch autoware.launch.xml \
     vehicle_model:=segway \
-    sensor_model:=pixkit_sensor_kit \
+    sensor_model:=segway_sensor_kit \
     map_path:="$MAP_DIR" \
     pointcloud_map_file:="$PCD_FILE" \
     lanelet2_map_file:="$LANELET_FILE" \

@@ -61,7 +61,7 @@ was the case here: `nmea_navsat_driver` turns the GGA quality indicator into a c
 of `(HDOP × epe)²`, and its default `epe_quality5 = 4.0 m` for an RTK **float** solution is
 about ten times too pessimistic. A live float fix on this vehicle was reporting **2.24–3.16
 m** across 264 samples. The table is corrected in
-`pixkit_sensor_kit_launch/launch/nmea_tcpclient_driver.launch.py`:
+`segway_sensor_kit_launch/launch/nmea_tcpclient_driver.launch.py`:
 
 | GGA quality | Meaning | epe |
 | --- | --- | --- |

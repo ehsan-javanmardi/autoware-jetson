@@ -95,7 +95,7 @@ The cloud carries `x, y, z, intensity, tag, line, timestamp` at a 26-byte point 
 ## Extrinsics are a placeholder
 
 `livox_frame` is currently at the sensor-kit origin with zero rotation, in
-[`pixkit_sensor_kit_description/config/sensor_kit_calibration.yaml`](../src/launcher/autoware_launch/sensor_kit/pixkit_sensor_kit_launch/pixkit_sensor_kit_description/config/sensor_kit_calibration.yaml).
+[`segway_sensor_kit_description/config/sensor_kit_calibration.yaml`](../src/launcher/autoware_launch/sensor_kit/segway_sensor_kit_launch/segway_sensor_kit_description/config/sensor_kit_calibration.yaml).
 
 **This has to be measured before driving.** Ground segmentation reads `z` as height above
 `base_link`, so an unmeasured mount does not merely offset the cloud — it puts the ground

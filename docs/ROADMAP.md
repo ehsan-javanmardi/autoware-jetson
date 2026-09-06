@@ -35,7 +35,7 @@ Settled 2026-09-06 before any code was written.
 ## 2. Vehicle
 
 - [x] **Segway vehicle interface.** `segway_vehicle_interface`, status verified at 50 Hz against the powered chassis. **Motion untested** — see [SEGWAY_VEHICLE_INTERFACE.md](SEGWAY_VEHICLE_INTERFACE.md).
-- [ ] **Retire `pix_driver`** from the launch path once the Segway interface works.
+- [x] **Retire `pix_driver`.** Launch scripts use `vehicle_model:=segway`, `sensor_model:=segway_sensor_kit`.
 - [x] **Vehicle model.** `segway_description` + `segway_launch` from the manual's Table 1. See [VEHICLE_SEGWAY.md](VEHICLE_SEGWAY.md).
 
 ## 3. Observability
@@ -50,15 +50,15 @@ One page, tabs, replacing the separate dashboards. Shows "Autoware is not runnin
 graph is absent rather than blank panels.
 
 - [x] **Shell + tabs.** Overview / Devices / Events / Vehicle / Foxglove at :8842. See [WEB_UI.md](WEB_UI.md).
-- [ ] **Foxglove topic configuration** editable from the UI.
+- [ ] **Foxglove topic configuration** editable from the UI. Header button now deep-links Foxglove at the bridge; group toggles still to do.
 
 ## 5. Operator control
 
 Separate backend process. Everything here is a write path.
 
-- [ ] **Goal setter** — single goal, ordered multi-goal, and repeat mode looping last→first until stopped.
+- [ ] **Goal setter** (backend scaffolding in place, sequencer not written) — single goal, ordered multi-goal, and repeat mode looping last→first until stopped.
 - [ ] **Sequencing mode switch** — step-by-step (advance on arrival) or single route with waypoints.
-- [ ] **Operation buttons** — engage, operation mode, and stop.
+- [x] **Operation buttons** — engage, autonomous/manual, stop and e-stop, in `autoware_web_control` on :8843.
 
 ## 6. Documentation
 

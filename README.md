@@ -272,7 +272,7 @@ Upstream `autoware` at tag 1.9.0 ships 458 packages in `src/`. This workspace ha
 | ------- | -------- | ------- |
 | `pix_hooke_driver`, `pix_hooke_driver_msgs` | `src/vehicle/external/pix_driver/` | Vehicle interface — CAN control and status |
 | `pixkit_launch`, `pixkit_description` | `src/launcher/autoware_launch/vehicle/pixkit_launch/` | Vehicle model: URDF, mesh, calibration. Selected by `vehicle_model:=pixkit` |
-| `pixkit_sensor_kit_launch`, `pixkit_sensor_kit_description` | `src/launcher/autoware_launch/sensor_kit/pixkit_sensor_kit_launch/` | Sensor kit: extrinsics and bring-up. Selected by `sensor_model:=pixkit_sensor_kit` |
+| `segway_sensor_kit_launch`, `segway_sensor_kit_description` | `src/launcher/autoware_launch/sensor_kit/segway_sensor_kit_launch/` | Sensor kit: extrinsics and bring-up. Selected by `sensor_model:=segway_sensor_kit` |
 
 These sit alongside upstream's `sample_vehicle_launch` and `sample_sensor_kit_launch`.
 **They still describe the Pixkit vehicle, not the Segway** — replacing them is the

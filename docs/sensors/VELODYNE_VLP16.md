@@ -2,7 +2,7 @@
 
 The stock Pixkit configuration drives four VLP-16s. **None are mounted on this vehicle**, and the
 whole block is disabled: `use_velodyne` defaults to `false` in
-[`lidar.launch.xml`](../../src/launcher/autoware_launch/sensor_kit/pixkit_sensor_kit_launch/pixkit_sensor_kit_launch/launch/lidar.launch.xml).
+[`lidar.launch.xml`](../../src/launcher/autoware_launch/sensor_kit/segway_sensor_kit_launch/segway_sensor_kit_launch/launch/lidar.launch.xml).
 The driver packages are still built, so the configuration only needs a launch argument to come back.
 
 ## The stock four
@@ -22,7 +22,7 @@ detection, which is why their ranges and azimuth windows are clipped.
 
 ```bash
 ros2 launch autoware_launch autoware.launch.xml \
-    vehicle_model:=pixkit sensor_model:=pixkit_sensor_kit \
+    vehicle_model:=pixkit sensor_model:=segway_sensor_kit \
     map_path:=$PWD/autoware_map \
     lidar_profile:=velodyne
 ```
@@ -30,14 +30,14 @@ ros2 launch autoware_launch autoware.launch.xml \
 Running both lidars at once needs more than the two flags:
 
 1. **The concatenate node has to know about every input.**
-   [`config/lidar_profiles/`](../../src/launcher/autoware_launch/sensor_kit/pixkit_sensor_kit_launch/pixkit_sensor_kit_launch/config/lidar_profiles/os1_128.param.yaml)
+   [`config/lidar_profiles/`](../../src/launcher/autoware_launch/sensor_kit/segway_sensor_kit_launch/segway_sensor_kit_launch/config/lidar_profiles/os1_128.param.yaml)
    currently lists one topic, and `lidar_timestamp_offsets` and `lidar_timestamp_noise_window`
    need one entry per input topic. A mismatched array length is a startup failure.
 2. **The Velodyne driver publishes `PointXYZIRC`-incompatible clouds** unless run through the
    Autoware preprocessing chain. The Ouster fork publishes `PointXYZIRCAEDT` directly, so mixing
    the two means the concatenate node reduces everything to the lowest common layout.
 3. **Extrinsics.** `velodyne_rear_base_link` exists in
-   [`sensors_calibration.yaml`](../../src/launcher/autoware_launch/sensor_kit/pixkit_sensor_kit_launch/pixkit_sensor_kit_description/config/sensors_calibration.yaml);
+   [`sensors_calibration.yaml`](../../src/launcher/autoware_launch/sensor_kit/segway_sensor_kit_launch/segway_sensor_kit_description/config/sensors_calibration.yaml);
    the other three positions come from the sensor kit xacro and would need checking against the
    actual mounts.
 

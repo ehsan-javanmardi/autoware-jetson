@@ -36,7 +36,7 @@ than introducing its own. Nothing downstream has to change when the units are sw
 
 ```bash
 ros2 launch autoware_launch autoware.launch.xml \
-    vehicle_model:=pixkit sensor_model:=pixkit_sensor_kit \
+    vehicle_model:=pixkit sensor_model:=segway_sensor_kit \
     map_path:=$PWD/autoware_map \
     lidar_profile:=os2_32
 ```
@@ -133,7 +133,7 @@ This host is otherwise set up for it: `avahi-daemon` is active and `/etc/nsswitc
 ## What has to be checked when swapping units
 
 1. **The extrinsic.** `base_link2os_lidar_top` in
-   [`sensors_calibration.yaml`](../../src/launcher/autoware_launch/sensor_kit/pixkit_sensor_kit_launch/pixkit_sensor_kit_description/config/sensors_calibration.yaml)
+   [`sensors_calibration.yaml`](../../src/launcher/autoware_launch/sensor_kit/segway_sensor_kit_launch/segway_sensor_kit_description/config/sensors_calibration.yaml)
    describes one physical mount. The OS-2 is a different size from the OS-1, so unless it sits in
    exactly the same place with the same orientation, that entry has to be re-measured before this
    profile localizes correctly. Wrong extrinsics do not raise an error, they produce scan matching
