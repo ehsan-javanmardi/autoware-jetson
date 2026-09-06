@@ -68,6 +68,10 @@ frames:
 RViz: the bridge, why the topic allow list is deliberate rather than `.*`, and how to change
 what is exposed.
 
+**[RUNNING.md](RUNNING.md)** — The two ways to bring the system up, why they must never
+overlap, and how Autoware layers on top of a running platform so it can be started and
+stopped without disturbing the sensors or the chassis.
+
 **[WEB_UI.md](WEB_UI.md)** — The one-page operator dashboard: what each tab shows, why the
 monitor cannot write, and why only one process may ever hold the Segway's serial port.
 

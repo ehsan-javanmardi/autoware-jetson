@@ -21,6 +21,7 @@ is specific to this workspace.
 | Install on a fresh Jetson | [Install](#install) · [docs/INSTALL.md](docs/INSTALL.md) |
 | Open the web UI | [Web UI](#web-ui) — `http://<jetson>:8842` |
 | Drive it by hand | [Web UI](#web-ui), Remote drive tab |
+| Run the robot | `./segway.sh` — see [docs/RUNNING.md](docs/RUNNING.md) |
 | Launch Autoware | [Running Autoware](#running-autoware) |
 | Watch topics on a tablet | [`foxglove/README.md`](foxglove/README.md) |
 | Talk to the Segway | [docs/SEGWAY_CONNECTING.md](docs/SEGWAY_CONNECTING.md) |
@@ -101,6 +102,12 @@ stopped replying rather than as a missing port.
 ## Web UI
 
 One page, on the Jetson, for hardware status, Foxglove, Autoware and remote driving.
+
+```bash
+./segway.sh        # sensors, chassis, web UI and Foxglove; Autoware started from the UI
+```
+
+or, if you want them individually:
 
 ```bash
 ros2 launch segway_web_ui      web_ui.launch.xml       # the page,    :8842

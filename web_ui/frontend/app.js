@@ -481,9 +481,16 @@ function renderAutowareRun() {
          'port 8843', S.ctrl && S.ctrl.up ? 'ok' : 'off') +
     '</div>';
   if (!S.ctrl || !S.ctrl.up) return out + prereqs('Starting and stopping Autoware');
+  const layered = a.hardware_owned_by_platform;
   out += '<div class="card" style="margin-top:14px"><h2>Run</h2>' +
-    '<p class="muted">Launches <code>autoware_kashiwa.sh</code>: vehicle_model segway, ' +
-    'sensor_model segway_sensor_kit, Livox profile.</p>' +
+    (layered
+      ? '<p class="muted">The platform owns the sensors and the chassis, so Autoware ' +
+        'starts as the autonomy layer only (<code>launch_sensing_driver:=false ' +
+        'launch_vehicle_interface:=false</code>). Starting and stopping it leaves the ' +
+        'sensors, the chassis and this page untouched.</p>'
+      : '<p class="muted">Nothing else owns the hardware, so Autoware will start its ' +
+        'own sensor drivers and vehicle interface. Stopping it stops those too. Run ' +
+        '<code>./segway.sh</code> first if you want them to persist.</p>') +
     '<div class="btnrow">' +
     '<button class="act go" data-act="autoware_start"' + (up ? ' disabled' : '') + '>Start Autoware</button>' +
     '<button class="act stop" data-act="autoware_stop"' + (up ? '' : ' disabled') + '>Stop Autoware</button>' +

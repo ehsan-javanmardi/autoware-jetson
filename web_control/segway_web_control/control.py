@@ -82,20 +82,42 @@ class ControlBackend(Node):
         with self.lock:
             return self.autoware_proc is not None and self.autoware_proc.poll() is None
 
+    def _hardware_already_up(self) -> bool:
+        """Is something else already driving the sensors and the chassis?
+
+        segway.sh owns them for the life of the platform. If it does, Autoware must
+        not bring up its own: a second vehicle interface cannot share the chassis
+        serial port, and a second Livox driver fights for the same UDP ports.
+        """
+        names = {n for n, _ in self.get_node_names_and_namespaces()}
+        return "segway_vehicle_interface" in names
+
     def start_autoware(self) -> tuple[bool, str]:
         if self.autoware_running():
             return False, "already running"
         if not os.path.exists(LAUNCH_SCRIPT):
             return False, f"launch script missing: {LAUNCH_SCRIPT}"
+
+        cmd = ["bash", LAUNCH_SCRIPT]
+        layered = self._hardware_already_up()
+        if layered:
+            # Autonomy only. The platform keeps the sensors and the chassis, so
+            # starting and stopping Autoware from the UI leaves them untouched -
+            # which is the whole reason the two are separate processes.
+            cmd += ["launch_sensing_driver:=false", "launch_vehicle_interface:=false"]
+
         with self.lock:
             # start_new_session so the whole launch tree can be signalled as a group.
             # ros2 launch spawns many children; killing only the shell orphans them.
             self.autoware_proc = subprocess.Popen(
-                ["bash", LAUNCH_SCRIPT], cwd=REPO,
+                cmd, cwd=REPO,
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                 start_new_session=True)
-        self.get_logger().warn("Autoware launch started from the web UI")
-        return True, "started"
+        self.get_logger().warn(
+            "Autoware started from the web UI" +
+            (" (autonomy only; the platform keeps the sensors and the chassis)"
+             if layered else " (with its own sensor drivers and vehicle interface)"))
+        return True, "started (layered)" if layered else "started (standalone)"
 
     def stop_autoware(self) -> tuple[bool, str]:
         if not self.autoware_running():
@@ -230,6 +252,7 @@ class ControlBackend(Node):
     def state(self) -> dict:
         return {
             "autoware_running": self.autoware_running(),
+            "hardware_owned_by_platform": self._hardware_already_up(),
             "remote": {"enabled": self.remote_enabled, "max_speed": self.max_speed,
                        "in_situ": self.in_situ},
             "control_mode": self.control_mode,
