@@ -64,6 +64,10 @@ frames:
 | [VELODYNE_VLP16.md](sensors/VELODYNE_VLP16.md) | Not fitted; kept for the stock configuration |
 | [ULTRASONIC_RADAR.md](sensors/ULTRASONIC_RADAR.md) | Ultrasonic and Continental ARS408 |
 
+**[../foxglove/README.md](../foxglove/README.md)** — Watching Autoware from an iPad without
+RViz: the bridge, why the topic allow list is deliberate rather than `.*`, and how to change
+what is exposed.
+
 **[LIVOX_HAP.md](LIVOX_HAP.md)** — The Livox HAP: what had to be vendored and why a plain
 `colcon build` could not do it alone, the JSON that holds the device address, the
 `xfer_format` that decides whether Autoware can read the cloud at all, and why the IMU

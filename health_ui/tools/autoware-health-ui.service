@@ -1,0 +1,37 @@
+# Autoware health dashboard as a systemd *user* service.
+#
+#   mkdir -p ~/.config/systemd/user
+#   cp health_ui/tools/autoware-health-ui.service ~/.config/systemd/user/
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now autoware-health-ui
+#
+# To have it come up at boot rather than at first login:
+#   sudo loginctl enable-linger $USER
+#
+# Status and logs:
+#   systemctl --user status autoware-health-ui
+#   journalctl --user -u autoware-health-ui -f
+
+[Unit]
+Description=Autoware health dashboard (read-only)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/workspace/pix_autoware/health_ui
+ExecStart=%h/workspace/pix_autoware/health_ui/run.sh
+
+# run.sh pins these itself, but setting them here documents the coupling: the
+# dashboard MUST use the same middleware as Autoware or it sees an empty graph.
+# AUTOWARE_WS is not set: run.sh derives it from health_ui/'s own location.
+Environment=RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+Environment=CYCLONEDDS_URI=file://%h/cyclonedds.xml
+
+# The dashboard is most useful exactly when Autoware is unhealthy, so it must
+# outlive it: never stop, always come back.
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

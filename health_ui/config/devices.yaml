@@ -1,0 +1,111 @@
+# Device inventory for the Autoware health dashboard.
+#
+# This file is READ ONLY by the dashboard - nothing here is pushed to the vehicle.
+# Retargeted 2026-09-06 from the Pixkit inventory to the Jetson / Segway platform.
+#
+#   probe:  icmp        -> ping
+#           tcp:<port>  -> TCP connect (use for devices that drop ICMP)
+#           none        -> no reachability probe, topics only. Correct for anything
+#                          that is not on the network at all: USB and serial devices
+#                          have no address to probe, so their topics ARE the check.
+#
+#   optional: true      -> hardware that may not be fitted. While it does not answer
+#                          it stays grey and is kept out of the problem list. As soon
+#                          as it DOES answer it is graded normally - a sensor that
+#                          responds but publishes nothing is broken, not absent.
+#
+#   topics[].expect_hz  -> nominal rate. warn/error thresholds are derived as
+#                          fractions of it (see rate_warn_ratio below).
+#
+# Topic paths assume the full stack, where the outer launch supplies the /sensing
+# namespace. Running a sensor-kit launch file on its own drops that prefix.
+
+settings:
+  probe_interval_s: 10.0     # how often each device is pinged
+  rate_window_s: 10.0        # sliding window used to compute Hz
+  rate_warn_ratio: 0.7       # below expect_hz * this -> WARN
+  rate_error_ratio: 0.4      # below expect_hz * this -> ERROR
+  stale_after_s: 5.0         # no diagnostics update for this long -> module goes STALE
+
+host:
+  name: Jetson AGX Orin
+  ip: 192.168.1.101
+  note: host_ip in lidar.launch.xml; eno1, the sensor LAN side
+
+groups:
+  - key: lidar
+    label: LiDAR
+    devices:
+      # Observed between 7.5 and 9.8 Hz against the requested 10. With
+      # rate_warn_ratio 0.7 the WARN floor is 7 Hz, which covers that spread.
+      - name: Livox HAP
+        ip: 192.168.1.110
+        probe: icmp
+        profile: livox
+        topics:
+          - { topic: /sensing/lidar/top/livox/points, expect_hz: 10.0 }
+      - name: Ouster OS-1-128 (top)
+        ip: 192.168.1.126
+        optional: true
+        probe: tcp:7501
+        profile: os1_128
+        topics:
+          - { topic: /sensing/lidar/top/ouster/points, expect_hz: 10.0 }
+      - name: Ouster OS-2-32
+        ip: 192.168.1.120
+        optional: true
+        probe: tcp:7501
+        profile: os2_32
+        topics:
+          - { topic: /sensing/lidar/top/ouster/points, expect_hz: 10.0 }
+
+  - key: gnss
+    label: GNSS / RTK
+    devices:
+      # USB, claimed by libusb - no IP, and no /dev/ttyACM to watch either, so the
+      # topics are the only evidence the receiver is alive.
+      - name: u-blox ZED-F9R
+        probe: none
+        topics:
+          - { topic: /sensing/gnss/fix, expect_hz: 1.0 }
+          - { topic: /sensing/gnss/pose_with_covariance, expect_hz: 1.0 }
+      # RTCM arriving from the ichimill caster. Silent until the receiver has a fix
+      # to uplink as GGA, because RTCM32M7S is nmea-required - see GNSS_IMU_UBLOX_F9R.md.
+      - name: NTRIP corrections (ichimill)
+        probe: none
+        optional: true
+        topics:
+          - { topic: /ntrip_client/rtcm, expect_hz: 1.0 }
+
+  - key: imu
+    label: IMU
+    devices:
+      # The HAP's own IMU. The F9R's is unreachable through ublox_dgnss; see
+      # LIVOX_HAP.md for why this is the source.
+      - name: Livox HAP IMU
+        probe: none
+        topics:
+          - { topic: /sensing/lidar/top/livox/imu, expect_hz: 200.0 }
+          - { topic: /sensing/imu/imu_data, expect_hz: 200.0 }
+
+  - key: vehicle_if
+    label: Vehicle interface
+    devices:
+      # Serial over USB (CP2102). As of 2026-09-06 the chassis does not reply -
+      # the port opens but every value comes back 0xffff. See SEGWAY_HARDWARE.md.
+      - name: Segway RMP Plus 401
+        probe: none
+        optional: true
+        topics:
+          - { topic: /vehicle/status/velocity_status, expect_hz: 50.0 }
+          - { topic: /vehicle/status/steering_status, expect_hz: 50.0 }
+          - { topic: /vehicle/status/control_mode, expect_hz: 50.0 }
+
+  - key: pipeline
+    label: Sensing pipeline
+    devices:
+      - name: Point cloud preprocessing
+        probe: none
+        topics:
+          - { topic: /sensing/lidar/concatenated/pointcloud, expect_hz: 7.5 }
+          - { topic: /sensing/vehicle_velocity_converter/twist_with_covariance, expect_hz: 50.0 }

@@ -8,7 +8,7 @@ IMU as well.
 | Device | Livox HAP, `192.168.1.110` (MAC `e4:7a:2c:83:1b:60`) |
 | Host | `192.168.1.101` on `eno1`, 1 Gb/s |
 | Frame | `livox_frame` |
-| Point cloud | `/sensing/lidar/top/livox/points` — `sensor_msgs/PointCloud2`, ~45 k points, ~7.5 Hz |
+| Point cloud | `/sensing/lidar/top/livox/points` — `sensor_msgs/PointCloud2`, ~45 k points, 7.5-10 Hz |
 | IMU | `/sensing/lidar/top/livox/imu` — `sensor_msgs/Imu`, ~200 Hz |
 
 Select it with `lidar_profile:=livox`, which is the **default**. The Ouster profiles still
@@ -124,7 +124,7 @@ together, so nothing else needs changing.
 ## Verifying
 
 ```bash
-ros2 topic hz   /sensing/lidar/top/livox/points     # expect ~7.5 Hz
+ros2 topic hz   /sensing/lidar/top/livox/points     # expect 7.5-10 Hz
 ros2 topic hz   /sensing/lidar/top/livox/imu        # expect ~200 Hz
 ros2 topic echo /sensing/lidar/top/livox/points --once --field width   # expect ~45000
 ```

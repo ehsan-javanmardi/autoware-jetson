@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Autoware Health</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header>
+    <div class="brand">Autoware Health <small id="vehicle-name">Jetson / Segway</small></div>
+    <div class="pill"><span class="dot" id="conn-dot"></span><span id="conn-text">connecting…</span></div>
+    <div id="header-pills" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+    <div class="spacer"></div>
+    <nav>
+      <button data-view="overview" class="on">Overview</button>
+      <button data-view="devices">Devices</button>
+      <button data-view="events">Events</button>
+    </nav>
+  </header>
+
+  <div class="layout">
+    <main id="main"></main>
+    <aside class="card rail">
+      <h2>Active problems <span class="badge" id="prob-count">0</span></h2>
+      <div class="list" id="rail"></div>
+    </aside>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

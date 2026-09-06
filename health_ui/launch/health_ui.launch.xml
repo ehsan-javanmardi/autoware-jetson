@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+<!--
+  Read-only Autoware diagnostics dashboard.
+
+    ros2 launch autoware_health_ui health_ui.launch.xml
+    ros2 launch autoware_health_ui health_ui.launch.xml port:=9000 probe:=false
+    ros2 launch autoware_health_ui health_ui.launch.xml host:=127.0.0.1
+
+  Runs in the foreground and stops with Ctrl-C, like any other ros2 launch. To
+  leave it running independently of any Autoware session, use
+  `autoware-health start` instead - which is what the launch scripts do.
+-->
+<launch>
+  <arg name="host" default="0.0.0.0"
+       description="bind address; 127.0.0.1 restricts it to this machine"/>
+  <arg name="port" default="8842" description="HTTP port"/>
+  <arg name="probe" default="true"
+       description="ping/TCP the devices in devices.yaml for reachability"/>
+  <arg name="config" default=""
+       description="device inventory; empty uses the packaged config/devices.yaml"/>
+
+  <let name="probe_arg" value="" if="$(var probe)"/>
+  <let name="probe_arg" value="--no-probe" unless="$(var probe)"/>
+  <let name="config_arg" value=""
+       if="$(eval &quot;'$(var config)' == ''&quot;)"/>
+  <let name="config_arg" value="--config $(var config)"
+       unless="$(eval &quot;'$(var config)' == ''&quot;)"/>
+
+  <!-- Plain argv, not ROS parameters: the same entry point is driven from
+       ros2 launch, from run.sh and from the autoware-health command, and argv
+       is the only one of those three that all of them can reach. -->
+  <node pkg="autoware_health_ui" exec="health_ui" name="autoware_health_ui"
+        output="screen"
+        args="--host $(var host) --port $(var port) $(var probe_arg) $(var config_arg)"/>
+</launch>

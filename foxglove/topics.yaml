@@ -1,0 +1,68 @@
+# Which topics foxglove_bridge exposes.
+#
+# Entries are Python/std regex anchored by the bridge itself; ".*" would expose
+# everything. Keep this list deliberate: the bridge serialises every advertised
+# topic for every connected client, and on a Jetson sharing one memory pool with
+# the GPU, advertising the raw camera and every debug marker is enough to cost
+# frames in the planner.
+#
+# The web UI edits this file and restarts the bridge; foxglove_bridge reads
+# topic_whitelist once at startup and has no reload.
+
+groups:
+  - key: core
+    label: Core (always on)
+    always: true
+    topics:
+      - /tf
+      - /tf_static
+      - /diagnostics
+
+  - key: map
+    label: Map
+    topics:
+      - /map/vector_map                       # lanelet2
+      - /map/pointcloud_map
+
+  - key: localization
+    label: Localization
+    topics:
+      - /localization/kinematic_state
+      - /localization/pose_with_covariance
+      - /sensing/gnss/pose_with_covariance
+
+  - key: sensing
+    label: Sensing
+    topics:
+      - /sensing/lidar/concatenated/pointcloud
+      - /sensing/imu/imu_data
+
+  - key: perception
+    label: Perception
+    topics:
+      - /perception/object_recognition/detection/objects
+      - /perception/object_recognition/objects
+      - /perception/object_recognition/tracking/objects
+      - /perception/occupancy_grid_map/map
+
+  - key: planning
+    label: Planning
+    topics:
+      - /planning/scenario_planning/trajectory
+      - /planning/mission_planning/route
+      - /planning/scenario_planning/lane_driving/behavior_planning/path
+
+  - key: vehicle
+    label: Vehicle
+    topics:
+      - /vehicle/status/velocity_status
+      - /vehicle/status/steering_status
+      - /vehicle/status/control_mode
+      - /api/operation_mode/state
+
+  - key: heavy
+    label: Heavy (off by default)
+    default_enabled: false
+    topics:
+      - /sensing/lidar/top/livox/points       # pre-preprocessing, ~45k points at 10 Hz
+      - /sensing/camera/.*

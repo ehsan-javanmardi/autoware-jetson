@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>autoware_health_ui</name>
+  <version>0.1.0</version>
+  <description>
+    Read-only web dashboard for Autoware diagnostics: module health from the AD API
+    diagnostic graph, drill-down to the failing leaf, and sensor reachability and
+    topic rates. Creates no publishers and no service clients.
+  </description>
+  <maintainer email="ehsan.jmardi@gmail.com">ehsan-javanmardi</maintainer>
+  <license>Apache License 2.0</license>
+
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>autoware_adapi_v1_msgs</exec_depend>
+  <exec_depend>ament_index_python</exec_depend>
+  <exec_depend>python3-yaml</exec_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

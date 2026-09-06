@@ -1,0 +1,111 @@
+#!/usr/bin/env bash
+# autoware-health - run and inspect the Autoware health dashboard.
+#
+#   autoware-health              run in the foreground (Ctrl-C to stop)
+#   autoware-health start        start detached, survives this shell closing
+#   autoware-health stop         stop a detached instance
+#   autoware-health restart      stop then start
+#   autoware-health status       is it up, and what is it reporting
+#   autoware-health logs         follow the log of a detached instance
+#   autoware-health open         open the dashboard in a browser
+#
+# Any extra arguments are passed to run.sh, e.g.
+#   autoware-health start --port 9000
+#   autoware-health --host 127.0.0.1 --no-probe
+#
+# AUTOWARE_HEALTH_PORT sets the port used for the readiness check and for
+# `status`/`open` (default 8842); pass --port to change the server's own port.
+set -eo pipefail
+
+HERE="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
+STATE="${XDG_STATE_HOME:-$HOME/.local/state}/autoware-health"
+PIDFILE="$STATE/pid"
+LOGFILE="$STATE/log"
+PORT="${AUTOWARE_HEALTH_PORT:-8842}"
+URL="http://localhost:$PORT"
+
+running() { [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; }
+pid() { cat "$PIDFILE" 2>/dev/null; }
+
+wait_ready() {
+  for _ in $(seq 1 40); do
+    if curl -sf -o /dev/null "$URL/api/snapshot" 2>/dev/null; then return 0; fi
+    running || return 1
+    sleep 0.25
+  done
+  return 1
+}
+
+cmd_start() {
+  if running; then
+    echo "autoware-health: already running (pid $(pid)) - $URL"
+    return 0
+  fi
+  mkdir -p "$STATE"
+  # setsid puts the dashboard in its own session, so a Ctrl-C aimed at whatever
+  # started it - a launch script, say - does not also kill the dashboard. It is
+  # most useful in the seconds right after Autoware stops.
+  setsid bash -c 'echo $$ > "$1"; shift; exec "$@"' _ \
+    "$PIDFILE" "$HERE/run.sh" "$@" </dev/null >"$LOGFILE" 2>&1 &
+  disown 2>/dev/null || true
+  if wait_ready; then
+    echo "autoware-health: started (pid $(pid)) - $URL"
+  else
+    echo "autoware-health: failed to start; last lines of $LOGFILE:" >&2
+    tail -n 15 "$LOGFILE" >&2 || true
+    rm -f "$PIDFILE"
+    return 1
+  fi
+}
+
+cmd_stop() {
+  if ! running; then
+    echo "autoware-health: not running"
+    rm -f "$PIDFILE"
+    return 0
+  fi
+  local p; p="$(pid)"
+  kill "$p" 2>/dev/null || true
+  for _ in $(seq 1 20); do running || break; sleep 0.25; done
+  running && kill -9 "$p" 2>/dev/null || true
+  rm -f "$PIDFILE"
+  echo "autoware-health: stopped (pid $p)"
+}
+
+cmd_status() {
+  if running; then
+    echo "autoware-health: running (pid $(pid)) - $URL"
+  else
+    echo "autoware-health: not running"
+    return 1
+  fi
+  curl -sf "$URL/api/snapshot" 2>/dev/null | python3 -c '
+import json, sys
+L = {0: "OK", 1: "WARN", 2: "ERROR", 3: "STALE"}
+d = json.load(sys.stdin)
+age = d.get("graph_age")
+print("  autoware  : %s%s" % (
+    "connected" if d["graph_ok"] else "not reporting",
+    "  (last update %.1fs ago)" % age if age else ""))
+print("  modules   : " + "  ".join(
+    "%s=%s" % (m["label"], L[m["level"]]) for m in d["modules"]))
+probs = d.get("problems", [])
+print("  problems  : %d" % len(probs))
+for p in probs[:5]:
+    print("      [%-5s] %-22s %s" % (L[p["level"]], p["name"][:22], p["message"][:44]))
+if len(probs) > 5:
+    print("      ... and %d more" % (len(probs) - 5))
+' 2>/dev/null || echo "  (dashboard is up but not answering /api/snapshot yet)"
+}
+
+case "${1:-run}" in
+  start)   shift; cmd_start "$@" ;;
+  stop)    cmd_stop ;;
+  restart) shift; cmd_stop; cmd_start "$@" ;;
+  status)  cmd_status ;;
+  logs)    tail -f "$LOGFILE" ;;
+  open)    xdg-open "$URL" >/dev/null 2>&1 || echo "open $URL in a browser" ;;
+  run)     shift 2>/dev/null || true; exec "$HERE/run.sh" "$@" ;;
+  -h|--help|help) sed -n '2,20p' "$(readlink -f "${BASH_SOURCE[0]}")" | sed 's/^# \?//' ;;
+  *)       exec "$HERE/run.sh" "$@" ;;   # bare flags: foreground run
+esac
