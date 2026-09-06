@@ -325,11 +325,76 @@ function renderRail() {
 
 /* ----------------------------------------------------------------- render */
 
+// ---------------------------------------------------------------- Vehicle tab
+// Reads /api/vehicle, which reads ROS. Nothing here touches the chassis: the Segway
+// SDK does not arbitrate serial access, and a second opener degrades the link for
+// segway_vehicle_interface while reading 0xffff itself.
+function renderVehicle() {
+  const v = S.vehicle;
+  if (!v) return '<div class="card"><h2>Vehicle</h2><p class="muted">loading…</p></div>';
+  if (!v.running) {
+    return '<div class="card"><h2>Vehicle</h2>' +
+      '<p class="muted">The vehicle interface is not publishing.' +
+      (v.reason ? ' (' + esc(v.reason) + ')' : '') + '</p>' +
+      '<p class="muted">Start it with:<br><code>ros2 launch segway_vehicle_interface ' +
+      'segway_vehicle_interface.launch.xml</code></p></div>';
+  }
+  const present = v.chassis_present;
+  const rows = [
+    ['Chassis', present ? 'replying' : 'NOT replying (values read 0xffff)'],
+    ['Control mode', v.control_mode || '—'],
+    ['Speed', (v.speed_mps ?? 0).toFixed(3) + ' m/s'],
+    ['Yaw rate', (v.yaw_rate ?? 0).toFixed(3) + ' rad/s'],
+    ['Battery', (v.battery_percent ?? 0) + ' %  (' + (v.battery_volts ?? 0) + ' V)'],
+    ['Data age', (v.age_s ?? 0) + ' s'],
+  ];
+  return '<div class="card"><h2>Vehicle <span class="badge">Segway RMP Plus 401</span></h2>' +
+    '<table class="kv">' + rows.map(function (r) {
+      return '<tr><th>' + esc(r[0]) + '</th><td>' + esc(String(r[1])) + '</td></tr>';
+    }).join('') + '</table>' +
+    (present ? '' : '<p class="muted">The serial link is open but the chassis is not ' +
+      'answering. Check that the vehicle is powered on.</p>') +
+    '</div>';
+}
+
+// --------------------------------------------------------------- Foxglove tab
+function renderFoxglove() {
+  const f = S.foxglove;
+  if (!f) return '<div class="card"><h2>Foxglove</h2><p class="muted">loading…</p></div>';
+  const host = location.hostname;
+  const state = f.bridge_running
+    ? '<span class="badge ok">running</span>'
+    : '<span class="badge err">not running</span>';
+  let out = '<div class="card"><h2>Foxglove bridge ' + state + '</h2>';
+  if (f.bridge_running) {
+    out += '<p>Connect the Foxglove app to <code>ws://' + esc(host) + ':' +
+           f.bridge_port + '</code></p>';
+  } else {
+    out += '<p class="muted">Start it with:<br><code>ros2 launch foxglove_bridge ' +
+           'foxglove_bridge_launch.xml port:=8765 ' +
+           'topic_whitelist:="$(./foxglove/build_whitelist.py)"</code></p>';
+  }
+  if (f.error) out += '<p class="muted">config: ' + esc(f.error) + '</p>';
+  out += '</div><div class="card"><h2>Exposed topic groups</h2>' +
+    '<p class="muted">Editing this restarts the bridge, which is a write path, so it ' +
+    'lives in the control backend rather than here. This tab is read-only.</p>';
+  out += '<table class="kv">' + (f.groups || []).map(function (g) {
+    const badge = g.always ? '<span class="badge">always</span>'
+                           : (g.enabled ? '<span class="badge ok">on</span>'
+                                        : '<span class="badge">off</span>');
+    return '<tr><th>' + esc(g.label) + ' ' + badge + '</th><td class="muted">' +
+           esc((g.topics || []).join(', ')) + '</td></tr>';
+  }).join('') + '</table></div>';
+  return out;
+}
+
 function render() {
   renderHeader();
   renderRail();
   const main = document.getElementById('main');
   if (S.view === 'devices') main.innerHTML = renderDevices();
+  else if (S.view === 'vehicle') main.innerHTML = renderVehicle();
+  else if (S.view === 'foxglove') main.innerHTML = renderFoxglove();
   else if (S.view === 'events') main.innerHTML = renderEvents();
   else if (S.view === 'module' && S.stream) main.innerHTML = renderModule();
   else main.innerHTML = renderOverview();
@@ -354,7 +419,14 @@ function openModule(key) {
 
 document.addEventListener('click', (e) => {
   const nav = e.target.closest('nav button');
-  if (nav) { S.view = nav.dataset.view; if (S.view === 'devices') pollDevices(); render(); return; }
+  if (nav) {
+    S.view = nav.dataset.view;
+    if (S.view === 'devices') pollDevices();
+    if (S.view === 'vehicle') pollVehicle();
+    if (S.view === 'foxglove') pollFoxglove();
+    render();
+    return;
+  }
 
   const tile = e.target.closest('.tile');
   if (tile) { openModule(tile.dataset.module); return; }
@@ -383,6 +455,32 @@ document.addEventListener('click', (e) => {
     render();
   }
 });
+
+// Vehicle status moves fast enough to want a second-level refresh; the Foxglove
+// config barely changes, so it is polled lazily and only while its tab is open.
+let vehTimer = null;
+async function pollVehicle() {
+  try {
+    S.vehicle = await (await fetch('/api/vehicle')).json();
+  } catch (e) {
+    S.vehicle = { running: false, reason: 'dashboard unreachable' };
+  }
+  if (S.view === 'vehicle') render();
+  clearTimeout(vehTimer);
+  if (S.view === 'vehicle') vehTimer = setTimeout(pollVehicle, 1000);
+}
+
+let foxTimer = null;
+async function pollFoxglove() {
+  try {
+    S.foxglove = await (await fetch('/api/foxglove')).json();
+  } catch (e) {
+    S.foxglove = { groups: [], bridge_running: false, error: 'dashboard unreachable' };
+  }
+  if (S.view === 'foxglove') render();
+  clearTimeout(foxTimer);
+  if (S.view === 'foxglove') foxTimer = setTimeout(pollFoxglove, 5000);
+}
 
 let devTimer = null;
 async function pollDevices() {

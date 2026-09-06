@@ -49,7 +49,7 @@ Settled 2026-09-06 before any code was written.
 One page, tabs, replacing the separate dashboards. Shows "Autoware is not running" when the
 graph is absent rather than blank panels.
 
-- [ ] **Shell + tabs**, absorbing `tools/segway_dashboard` and the health monitor.
+- [x] **Shell + tabs.** Overview / Devices / Events / Vehicle / Foxglove at :8842. See [WEB_UI.md](WEB_UI.md).
 - [ ] **Foxglove topic configuration** editable from the UI.
 
 ## 5. Operator control

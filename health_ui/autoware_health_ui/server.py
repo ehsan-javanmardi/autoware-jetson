@@ -37,6 +37,54 @@ class Context:
     def header(self):
         return dict(self.bridge.header) if self.bridge else {}
 
+    def vehicle_state(self):
+        """Vehicle status read from ROS, never from the chassis directly.
+
+        The Segway SDK does not arbitrate serial access, so only
+        segway_vehicle_interface may hold /dev/ttyUSB0. See the Vehicle tab notes in
+        docs/WEB_UI.md.
+        """
+        if not self.bridge:
+            return {"running": False, "reason": "ROS bridge not started"}
+        return self.bridge.vehicle_state()
+
+    def foxglove_config(self):
+        """The Foxglove topic groups, and whether the bridge is actually up.
+
+        Read-only here by design: changing the selection restarts the bridge, which is a
+        write path and belongs to the control backend, not to this process.
+        """
+        import socket
+
+        path = os.path.join(os.path.dirname(os.path.dirname(
+            os.path.dirname(os.path.realpath(__file__)))), "foxglove", "topics.yaml")
+        groups, err = [], None
+        try:
+            import yaml
+            with open(path) as fh:
+                doc = yaml.safe_load(fh)
+            for g in doc.get("groups", []):
+                groups.append({
+                    "key": g.get("key"),
+                    "label": g.get("label", g.get("key")),
+                    "always": bool(g.get("always")),
+                    "enabled": bool(g.get("default_enabled", True)) or bool(g.get("always")),
+                    "topics": g.get("topics", []),
+                })
+        except Exception as exc:
+            err = f"{type(exc).__name__}: {exc}"
+
+        up = False
+        try:
+            with socket.socket() as s:
+                s.settimeout(0.3)
+                up = s.connect_ex(("127.0.0.1", 8765)) == 0
+        except OSError:
+            up = False
+
+        return {"groups": groups, "config_path": path, "error": err,
+                "bridge_running": up, "bridge_port": 8765}
+
     def devices(self):
         rates = self.rates()
         probes = self.prober.results()
@@ -159,6 +207,10 @@ def make_handler(ctx):
                 return self._json({"id": item, "history": ctx.model.history_of(item)})
             if route == "/api/ros_nodes":
                 return self._json({"nodes": ctx.node_names()})
+            if route == "/api/vehicle":
+                return self._json(ctx.vehicle_state())
+            if route == "/api/foxglove":
+                return self._json(ctx.foxglove_config())
 
             return self._json({"error": "not found", "path": route}, 404)
 

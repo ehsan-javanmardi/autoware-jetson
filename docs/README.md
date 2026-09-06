@@ -68,6 +68,9 @@ frames:
 RViz: the bridge, why the topic allow list is deliberate rather than `.*`, and how to change
 what is exposed.
 
+**[WEB_UI.md](WEB_UI.md)** — The one-page operator dashboard: what each tab shows, why the
+monitor cannot write, and why only one process may ever hold the Segway's serial port.
+
 **[VEHICLE_SEGWAY.md](VEHICLE_SEGWAY.md)** — Dimensions from the RMP manual, where
 `base_link` and each sensor sit, why steering is virtual on a robot with no steered axle,
 and what the inherited Pixkit numbers would have done to the ground plane.

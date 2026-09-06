@@ -31,6 +31,8 @@ from autoware_vehicle_msgs.msg import (
     ControlModeReport, GearCommand, GearReport, SteeringReport, VelocityReport,
 )
 from autoware_vehicle_msgs.srv import ControlModeCommand
+from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus, KeyValue
+from sensor_msgs.msg import BatteryState
 
 from .sdk import SegwaySdk, SegwaySdkError
 
@@ -89,8 +91,17 @@ class SegwayVehicleInterface(Node):
         self.pub_mode = self.create_publisher(ControlModeReport, "/vehicle/status/control_mode", 1)
         self.pub_gear = self.create_publisher(GearReport, "/vehicle/status/gear_status", 1)
 
+        # Battery and chassis state exist so nothing else needs to open the serial port.
+        # The SDK does not arbitrate access: a second process opens /dev/ttyUSB0 without
+        # error and then reads 0xffff for everything, and while it does the chassis link
+        # is unreliable for BOTH. Anything that wants this data must read these topics.
+        self.pub_battery = self.create_publisher(BatteryState, "/vehicle/status/battery", 1)
+        self.pub_diag = self.create_publisher(DiagnosticArray, "/diagnostics", 1)
+
         period = 1.0 / float(g("status_rate_hz").value)
         self.create_timer(period, self._publish_status)
+        # Battery and versions change slowly; 1 Hz keeps them off the 50 Hz path.
+        self.create_timer(1.0, self._publish_chassis_state)
         self.create_timer(0.1, self._watchdog)
 
         v = self.sdk.versions()
@@ -197,6 +208,53 @@ class SegwayVehicleInterface(Node):
         gr.stamp = now
         gr.report = self._gear
         self.pub_gear.publish(gr)
+
+    def _publish_chassis_state(self) -> None:
+        now = self.get_clock().now().to_msg()
+        soc = self.sdk.battery_soc()
+        mvol = self.sdk.battery_mvol()
+        responding = self.sdk.responding()
+
+        b = BatteryState()
+        b.header.stamp = now
+        b.voltage = mvol / 1000.0
+        # percentage is 0..1 in BatteryState; the chassis reports whole percent.
+        b.percentage = soc / 100.0
+        b.present = responding
+        b.power_supply_status = (BatteryState.POWER_SUPPLY_STATUS_DISCHARGING if responding
+                                 else BatteryState.POWER_SUPPLY_STATUS_UNKNOWN)
+        self.pub_battery.publish(b)
+
+        st = DiagnosticStatus()
+        st.name = "segway_vehicle_interface: chassis"
+        st.hardware_id = "segway_rmp_401"
+        if not responding:
+            st.level = DiagnosticStatus.ERROR
+            st.message = "chassis not replying (versions read 0xffff)"
+        elif soc < 20:
+            st.level = DiagnosticStatus.WARN
+            st.message = f"battery low: {soc}%"
+        else:
+            st.level = DiagnosticStatus.OK
+            st.message = f"ok, battery {soc}%"
+
+        v = self.sdk.versions()
+        st.values = [
+            KeyValue(key="battery_soc_percent", value=str(soc)),
+            KeyValue(key="battery_mvol", value=str(mvol)),
+            KeyValue(key="odometer", value=str(self.sdk.odometer())),
+            KeyValue(key="chassis_mode", value=str(self.sdk.chassis_mode())),
+            KeyValue(key="ctrl_cmd_src", value=str(self.sdk.ctrl_cmd_src())),
+            KeyValue(key="central_version", value=f"0x{v['central']:04x}"),
+            KeyValue(key="motor_version", value=f"0x{v['motor']:04x}"),
+            KeyValue(key="host_version", value=f"0x{v['host']:04x}"),
+            KeyValue(key="allow_control", value=str(self.allow_control)),
+            KeyValue(key="autonomous", value=str(self._autonomous)),
+        ]
+        arr = DiagnosticArray()
+        arr.header.stamp = now
+        arr.status = [st]
+        self.pub_diag.publish(arr)
 
     # ---------------------------------------------------------------- teardown
 

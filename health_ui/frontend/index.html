@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Autoware Health</title>
+  <title>Autoware — Jetson / Segway</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
   <header>
-    <div class="brand">Autoware Health <small id="vehicle-name">Jetson / Segway</small></div>
+    <div class="brand">Autoware <small id="vehicle-name">Jetson / Segway</small></div>
     <div class="pill"><span class="dot" id="conn-dot"></span><span id="conn-text">connecting…</span></div>
     <div id="header-pills" style="display:flex;gap:8px;flex-wrap:wrap"></div>
     <div class="spacer"></div>
@@ -16,6 +16,8 @@
       <button data-view="overview" class="on">Overview</button>
       <button data-view="devices">Devices</button>
       <button data-view="events">Events</button>
+      <button data-view="vehicle">Vehicle</button>
+      <button data-view="foxglove">Foxglove</button>
     </nav>
   </header>
 

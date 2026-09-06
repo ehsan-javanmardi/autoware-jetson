@@ -35,6 +35,23 @@ HEADER_TOPICS = [
     ("routing", "/api/routing/state", "autoware_adapi_v1_msgs/msg/RouteState"),
 ]
 
+# Vehicle status, for the Vehicle tab. These are read from ROS rather than from the
+# chassis directly and that is not a stylistic choice: the Segway SDK does not arbitrate
+# access to the serial port. A second process opens /dev/ttyUSB0 without error, reads
+# 0xffff for everything, and degrades the link for the vehicle interface while it does.
+# segway_vehicle_interface owns the port; everyone else reads these topics.
+VEHICLE_TOPICS = [
+    ("battery", "/vehicle/status/battery", "sensor_msgs/msg/BatteryState"),
+    ("velocity", "/vehicle/status/velocity_status",
+     "autoware_vehicle_msgs/msg/VelocityReport"),
+    ("control_mode", "/vehicle/status/control_mode",
+     "autoware_vehicle_msgs/msg/ControlModeReport"),
+]
+
+CONTROL_MODE = {0: "no command", 1: "autonomous", 2: "autonomous steer only",
+                3: "autonomous velocity only", 4: "manual", 5: "disengaged",
+                6: "not ready"}
+
 OPERATION_MODE = {0: "unknown", 1: "stop", 2: "autonomous", 3: "local", 4: "remote"}
 MRM_STATE = {0: "unknown", 1: "normal", 2: "mrm operating",
              3: "mrm succeeded", 4: "mrm failed"}
@@ -140,6 +157,17 @@ class HealthBridge(Node):
                 msg_cls, topic,
                 lambda m, k=key: self._on_header(k, m), _QOS_LATCHED)
 
+        self.vehicle = {}
+        for key, topic, type_str in VEHICLE_TOPICS:
+            try:
+                msg_cls = get_message(type_str)
+            except Exception:
+                self.get_logger().warn("vehicle topic %s unavailable (%s)" % (topic, type_str))
+                continue
+            self.create_subscription(
+                msg_cls, topic,
+                lambda m, k=key: self._on_vehicle(k, m), 1)
+
         # Every topic named anywhere in devices.yaml gets a rate meter.
         self.meters = {}
         for group in cfg.get("groups", []):
@@ -183,6 +211,32 @@ class HealthBridge(Node):
             self.header[key] = ROUTE_STATE.get(getattr(msg, "state", 0), "unknown")
         elif key == "localization_init":
             self.header[key] = LOCALIZATION_STATE.get(getattr(msg, "state", 0), "unknown")
+
+    def _on_vehicle(self, key, msg):
+        now = time.time()
+        if key == "battery":
+            self.vehicle["battery_percent"] = round(getattr(msg, "percentage", 0.0) * 100.0, 1)
+            self.vehicle["battery_volts"] = round(getattr(msg, "voltage", 0.0), 2)
+            self.vehicle["chassis_present"] = bool(getattr(msg, "present", False))
+        elif key == "velocity":
+            self.vehicle["speed_mps"] = round(getattr(msg, "longitudinal_velocity", 0.0), 3)
+            self.vehicle["yaw_rate"] = round(getattr(msg, "heading_rate", 0.0), 3)
+        elif key == "control_mode":
+            self.vehicle["control_mode"] = CONTROL_MODE.get(getattr(msg, "mode", 0), "unknown")
+        self.vehicle["updated"] = now
+
+    def vehicle_state(self):
+        """Vehicle status, plus how stale it is.
+
+        The Vehicle tab must distinguish "the interface is running and the robot is
+        stationary" from "nothing is publishing", which look identical if you only
+        report zeros.
+        """
+        out = dict(self.vehicle)
+        updated = out.pop("updated", None)
+        out["running"] = updated is not None and (time.time() - updated) < 3.0
+        out["age_s"] = round(time.time() - updated, 1) if updated else None
+        return out
 
     # ------------------------------------------------------------- discovery
 
