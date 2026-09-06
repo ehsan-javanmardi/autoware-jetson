@@ -499,65 +499,71 @@ function renderGoals() {
 }
 
 // -------------------------------------------------------- Remote drive tab
-// Hold-to-drive. A button sends velocity only while it is held; releasing it,
-// the page closing, or the network dropping all stop the robot, because the
-// vehicle interface zeroes the command 0.5 s after the last one arrives. That
-// watchdog is what makes a phone safe to drive from at all, so the UI is built
-// around it rather than around a latch.
+// Analogue joystick rather than a D-pad, taken from tools/segway_dashboard which
+// was tuned against this chassis. Steering is continuous on an Ackermann base:
+// four buttons can only ask for full lock or nothing, which is why the first
+// version turned so badly.
 function renderRemote() {
   const v = S.vehicle || {};
   const r = (S.autoware && S.autoware.remote) || {};
   const armed = !!r.enabled;
+  const inSitu = !!r.in_situ;
   const ready = S.ctrl && S.ctrl.up && v.chassis_present;
+  const soc = v.battery_percent ?? 0;
+  const batCls = soc < 20 ? 'err' : (soc < 40 ? 'warn' : 'ok');
 
-  let out = '<div class="tiles">' +
-    tile('Remote drive', armed ? 'ARMED' : 'disarmed',
-         armed ? 'the vehicle will move' : 'controls inert', armed ? 'warn' : 'off') +
-    tile('Speed', (v.speed_mps ?? 0).toFixed(2) + ' m/s',
-         'limit ' + (r.max_speed ?? '—') + ' m/s', 'ok') +
-    tile('Chassis', v.chassis_present ? 'replying' : 'no reply',
-         v.control_mode || '', v.chassis_present ? 'ok' : 'err') +
-    tile('Battery', (v.battery_percent ?? 0) + ' %', (v.battery_volts ?? 0) + ' V',
-         (v.battery_percent ?? 0) < 20 ? 'err' : 'ok') +
-    '</div>';
-
-  if (!S.ctrl || !S.ctrl.up) return out + ctrlDown('Remote driving');
+  if (!S.ctrl || !S.ctrl.up) return ctrlDown('Remote driving');
   if (!v.running) {
-    return out + notice('<b>The vehicle interface is not running</b>, so there is nothing ' +
-      'to drive. Start it with <code>allow_control:=true</code>.', 'warn');
+    return notice('<b>The vehicle interface is not running</b>, so there is nothing to ' +
+      'drive.<br><code>ros2 launch segway_vehicle_interface ' +
+      'segway_vehicle_interface.launch.xml allow_control:=true</code>', 'warn');
   }
 
-  out += '<div class="armed-banner' + (armed ? '' : ' off') + '" style="margin-top:14px">' +
-    (armed ? '⚠ Remote drive is ARMED — the vehicle moves while a direction is held'
-           : '○ Remote drive is disarmed — arm it below to drive') + '</div>';
+  let out = '<div class="armed-banner' + (armed ? '' : ' off') + '">' +
+    (armed ? '⚠ ARMED — the vehicle moves while the joystick is held'
+           : '○ Disarmed — arm below to drive') + '</div>';
 
   out += '<div class="drive-wrap" style="margin-top:14px">';
 
-  // --- left: the pad
-  out += '<div class="card"><h2>Drive</h2>' +
-    '<div class="dpad">' +
-    '<button class="fwd"   data-drive="fwd"  ' + (armed ? '' : 'disabled') + '>▲</button>' +
-    '<button class="left"  data-drive="left" ' + (armed ? '' : 'disabled') + '>◀</button>' +
-    '<button class="halt"  data-act="drive_halt">STOP</button>' +
-    '<button class="right" data-drive="right"' + (armed ? '' : 'disabled') + '>▶</button>' +
-    '<button class="back"  data-drive="back" ' + (armed ? '' : 'disabled') + '>▼</button>' +
-    '</div>' +
-    '<div class="speed-row"><span class="muted">Speed limit</span>' +
+  // --- joystick
+  out += '<div class="card pad-wrap"><h2 style="align-self:flex-start">Drive</h2>' +
+    '<div class="pad' + (armed ? '' : ' disabled') + '" id="pad">' +
+    '<div class="ring"></div><div class="cross"></div><div class="cross-v"></div>' +
+    '<div class="knob" id="knob"></div>' +
+    '<div class="hint" id="padhint">' +
+      (armed ? 'hold and drag to drive' : 'arm to enable') + '</div></div>' +
+    '<div class="speed-row" style="width:100%;margin-top:30px">' +
+    '<span class="muted">Max</span>' +
     '<input type="range" id="spd" min="0.1" max="1.5" step="0.1" value="' +
       (r.max_speed ?? 0.5) + '"' + (ready ? '' : ' disabled') + '>' +
     '<span class="v" id="spdv">' + (r.max_speed ?? 0.5) + ' m/s</span></div>' +
-    '<p class="muted">Hold a direction to move. Release to stop.</p>' +
     '</div>';
 
-  // --- right: arming and the e-stop
-  out += '<div class="card" style="text-align:center">' +
-    '<button class="estop" data-act="estop">E-STOP</button>' +
-    '<p class="muted" style="margin-top:12px">Zeroes the command and disables the ' +
-    'motors immediately. No confirmation.</p>' +
+  // --- status + arming + e-stop
+  out += '<div class="card">' +
+    '<h2>Battery</h2>' +
+    '<div class="bar"><i class="' + batCls + '" style="width:' + Math.max(0, Math.min(100, soc)) + '%"></i></div>' +
+    '<div class="readout">' +
+      '<div><div class="k">Charge</div><div class="v">' + soc + ' %</div></div>' +
+      '<div><div class="k">Voltage</div><div class="v">' + (v.battery_volts ?? 0) + ' V</div></div>' +
+      '<div><div class="k">Speed</div><div class="v">' + (v.speed_mps ?? 0).toFixed(2) + ' m/s</div></div>' +
+      '<div><div class="k">Yaw rate</div><div class="v">' + (v.yaw_rate ?? 0).toFixed(2) + '</div></div>' +
+    '</div>' +
+    '<h2 style="margin-top:18px">Steering</h2>' +
+    '<div class="modeswitch">' +
+      '<button data-act="mode_ackermann" class="' + (inSitu ? '' : 'on') + '">Ackermann</button>' +
+      '<button data-act="mode_in_situ" class="' + (inSitu ? 'on' : '') + '">Spin in place</button>' +
+    '</div>' +
+    (inSitu ? notice('Spin-in-place uses a special chassis mode. The manual warns of high ' +
+        'rear-wheel current and a locked-rotor alarm after about 5 seconds, so the ' +
+        'vehicle interface stops a spin at 5 s. Use it as a manoeuvre, not a driving mode.', 'warn')
+            : '<p class="muted">Front wheels steer; minimum turning radius 1.36 m. The ' +
+              'robot must be moving to turn.</p>') +
+    '<div style="text-align:center;margin-top:18px">' +
+    '<button class="estop" data-act="estop">E-STOP</button></div>' +
     '<div class="btnrow" style="justify-content:center">' +
     '<button class="act ' + (armed ? 'stop' : 'go') + '" data-act="remote_toggle"' +
-      (ready ? '' : ' disabled') + '>' +
-      (armed ? 'Disarm' : 'Arm remote drive') + '</button>' +
+      (ready ? '' : ' disabled') + '>' + (armed ? 'Disarm' : 'Arm remote drive') + '</button>' +
     '</div></div>';
 
   out += '</div>';
@@ -782,54 +788,85 @@ function updateFoxButton() {
 }
 
 // ------------------------------------------------------- hold-to-drive input
-// Held direction is streamed at 10 Hz. Nothing latches: the moment a pointer is
-// released, leaves the button, or the page is hidden, the stream stops and the
-// vehicle interface's 0.5 s watchdog brings the robot to a halt on its own.
+// The knob position is the command: y is throttle, x is steering, both -1..1.
+// Nothing latches. Releasing, leaving the pad, hiding the tab or losing the
+// network all stop the robot, because the vehicle interface zeroes the command
+// 0.5 s after the last one arrives. That watchdog is the real safety mechanism;
+// this UI is built to feed it, not to replace it.
 let driveTimer = null;
-let driveDir = null;
+let joyActive = false;
+let joyX = 0, joyY = 0;
 
-function driveSend(dir) {
+function joySend() {
   const spd = parseFloat((document.getElementById('spd') || {}).value || '0.5');
-  fetch(CTRL() + '/api/drive', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ dir: dir, speed: spd }),
-  }).catch(function () { driveStop(); });
-}
-
-function driveStart(dir, el) {
-  if (driveDir) return;
-  driveDir = dir;
-  if (el) el.classList.add('held');
-  driveSend(dir);
-  clearInterval(driveTimer);
-  driveTimer = setInterval(function () { driveSend(driveDir); }, 100);
-}
-
-function driveStop() {
-  if (!driveDir) return;
-  driveDir = null;
-  clearInterval(driveTimer); driveTimer = null;
-  document.querySelectorAll('.dpad button').forEach(function (b) { b.classList.remove('held'); });
+  // Dead zone: a thumb resting on the knob should not creep the robot.
+  const mag = Math.hypot(joyX, joyY);
+  let dir = 'stop', speed = 0, turn = 0;
+  if (mag > 0.18) {
+    turn = -joyX;                       // screen x is rightward; steering is leftward
+    if (Math.abs(joyY) > 0.18) {
+      dir = joyY < 0 ? 'fwd' : 'back';
+      speed = spd * Math.min(1, Math.abs(joyY));
+    } else {
+      dir = joyX < 0 ? 'left' : 'right';
+      speed = spd;
+    }
+  }
   fetch(CTRL() + '/api/drive', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ dir: 'stop', speed: 0 }),
+    body: JSON.stringify({ dir: dir, speed: speed, turn: turn }),
+  }).catch(joyStop);
+}
+
+function joyMove(e) {
+  const pad = document.getElementById('pad');
+  if (!pad || !joyActive) return;
+  const b = pad.getBoundingClientRect();
+  const cx = b.left + b.width / 2, cy = b.top + b.height / 2;
+  const rad = b.width / 2 * 0.68;
+  let dx = (e.clientX - cx) / rad, dy = (e.clientY - cy) / rad;
+  const m = Math.hypot(dx, dy);
+  if (m > 1) { dx /= m; dy /= m; }
+  joyX = dx; joyY = dy;
+  const k = document.getElementById('knob');
+  if (k) k.style.transform = 'translate(calc(-50% + ' + (dx * rad) + 'px), calc(-50% + ' + (dy * rad) + 'px))';
+}
+
+function joyStart(e) {
+  const pad = document.getElementById('pad');
+  if (!pad || pad.classList.contains('disabled')) return;
+  joyActive = true;
+  pad.classList.add('active');
+  joyMove(e);
+  clearInterval(driveTimer);
+  driveTimer = setInterval(joySend, 100);
+  joySend();
+}
+
+function joyStop() {
+  if (!joyActive) return;
+  joyActive = false; joyX = 0; joyY = 0;
+  clearInterval(driveTimer); driveTimer = null;
+  const pad = document.getElementById('pad');
+  const k = document.getElementById('knob');
+  if (pad) pad.classList.remove('active');
+  if (k) k.style.transform = 'translate(-50%, -50%)';
+  fetch(CTRL() + '/api/drive', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ dir: 'stop', speed: 0, turn: 0 }),
   }).catch(function () {});
 }
 
 document.addEventListener('pointerdown', function (e) {
-  const b = e.target.closest('[data-drive]');
-  if (b && !b.disabled) { e.preventDefault(); driveStart(b.dataset.drive, b); }
+  if (e.target.closest('#pad')) { e.preventDefault(); joyStart(e); }
 });
-['pointerup', 'pointercancel', 'pointerleave'].forEach(function (ev) {
-  document.addEventListener(ev, function (e) {
-    if (e.target.closest && e.target.closest('[data-drive]')) driveStop();
-  });
+document.addEventListener('pointermove', function (e) { if (joyActive) joyMove(e); });
+['pointerup', 'pointercancel'].forEach(function (ev) {
+  document.addEventListener(ev, joyStop);
 });
-// Backstops: a pointer released off the button, a hidden tab, or a closing page.
-window.addEventListener('blur', driveStop);
-document.addEventListener('visibilitychange', function () { if (document.hidden) driveStop(); });
-window.addEventListener('pagehide', driveStop);
+window.addEventListener('blur', joyStop);
+document.addEventListener('visibilitychange', function () { if (document.hidden) joyStop(); });
+window.addEventListener('pagehide', joyStop);
 
 document.addEventListener('input', function (e) {
   if (e.target && e.target.id === 'spd') {

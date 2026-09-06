@@ -48,15 +48,29 @@ _SIGNATURES = [
     ("get_encode_speed_FR", ctypes.c_int16, []),
     ("get_encode_speed_RL", ctypes.c_int16, []),
     ("get_encode_speed_RR", ctypes.c_int16, []),
+    ("get_rotate_switch_stat", ctypes.c_uint8, []),
+    ("get_rotate_scheme_cfg", ctypes.c_uint8, []),
     # --- motion, write ------------------------------------------------------
     ("set_cmd_vel", None, [ctypes.c_double, ctypes.c_double]),
     ("set_enable_ctrl", ctypes.c_uint8, [ctypes.c_uint16]),
+    # In-situ rotation. A different control pattern from set_cmd_vel: the enable
+    # is called ONCE to start a spin, not streamed, and cancelled explicitly.
+    ("enable_rotate_switch", ctypes.c_int16, [ctypes.c_uint8]),
+    ("cfg_rotate_scheme_switch", None, [ctypes.c_uint8]),
+    ("set_vel_of_rotation", None, [ctypes.c_double]),
+    ("enable_chassis_in_situ_rotation", ctypes.c_int32, [ctypes.c_uint8]),
+    # The SDK exports this misspelled. Using the correct spelling fails to bind.
+    ("disable_chassis_in_situ_ratotion", None, []),
 ]
 
 # Names that can cause motion. Nothing outside SegwaySdk.set_cmd_vel and
 # SegwaySdk.set_enable_ctrl may call these, and both refuse unless allow_control
 # was passed at construction.
-_WRITE_PATHS = frozenset({"set_cmd_vel", "set_enable_ctrl"})
+_WRITE_PATHS = frozenset({
+    "set_cmd_vel", "set_enable_ctrl",
+    "enable_rotate_switch", "cfg_rotate_scheme_switch", "set_vel_of_rotation",
+    "enable_chassis_in_situ_rotation", "disable_chassis_in_situ_ratotion",
+})
 
 
 class SegwaySdkError(RuntimeError):
@@ -164,3 +178,37 @@ class SegwaySdk:
         if not self.allow_control:
             raise SegwaySdkError("set_enable_ctrl called on a read-only SegwaySdk")
         return self._lib.set_enable_ctrl(1 if enable else 0)
+
+    # ------------------------------------------------------ in-situ rotation
+    #
+    # The RMP steers its front wheels: a normal turn is set_cmd_vel with a yaw rate,
+    # and the chassis cannot turn tighter than its 1.36 m minimum radius. Spinning on
+    # the spot is a separate chassis mode with a separate API.
+    #
+    # The manual is blunt about the cost: "the current of the rear wheel will be too
+    # large, which may cause abnormality of the chassis and the motor", with a
+    # locked-rotor alarm after about 5 seconds. Treat it as a manoeuvre, not a mode
+    # to sit in.
+
+    def rotation_available(self) -> tuple[bool, bool]:
+        """(switch enabled, new scheme configured) as the chassis reports them."""
+        return bool(self._lib.get_rotate_switch_stat()), bool(self._lib.get_rotate_scheme_cfg())
+
+    def prepare_in_situ(self) -> None:
+        """Arm the chassis for in-situ rotation. Idempotent; call before spinning."""
+        if not self.allow_control:
+            raise SegwaySdkError("prepare_in_situ called on a read-only SegwaySdk")
+        self._lib.cfg_rotate_scheme_switch(1)
+        self._lib.enable_rotate_switch(1)
+
+    def start_in_situ(self, left: bool, rate_radps: float) -> int:
+        """Begin spinning. Called ONCE per spin, not streamed like set_cmd_vel."""
+        if not self.allow_control:
+            raise SegwaySdkError("start_in_situ called on a read-only SegwaySdk")
+        self._lib.set_vel_of_rotation(abs(float(rate_radps)))
+        return self._lib.enable_chassis_in_situ_rotation(0 if left else 1)
+
+    def stop_in_situ(self) -> None:
+        if not self.allow_control:
+            raise SegwaySdkError("stop_in_situ called on a read-only SegwaySdk")
+        self._lib.disable_chassis_in_situ_ratotion()

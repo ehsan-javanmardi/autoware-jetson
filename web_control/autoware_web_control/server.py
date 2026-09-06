@@ -53,7 +53,9 @@ def make_handler(backend):
             body = self._body()
 
             if self.path.startswith("/api/drive"):
-                ok, msg = backend.drive(body.get("dir", "stop"), body.get("speed", 0.0))
+                ok, msg = backend.drive(body.get("dir", "stop"),
+                                        body.get("speed", 0.0),
+                                        body.get("turn", 0.0))
                 return self._send({"ok": ok, "error": None if ok else msg})
 
             if not self.path.startswith("/api/action"):
@@ -78,6 +80,10 @@ def make_handler(backend):
                 ok, msg = backend.set_remote(not backend.remote_enabled)
             elif action == "drive_halt":
                 ok, msg = backend.drive("stop", 0.0)
+            elif action == "mode_ackermann":
+                ok, msg = backend.set_steering_mode(False)
+            elif action == "mode_in_situ":
+                ok, msg = backend.set_steering_mode(True)
             elif action == "set_max_speed":
                 backend.max_speed = max(0.1, min(1.5, float(body.get("value", 0.5))))
                 ok, msg = True, "ok"

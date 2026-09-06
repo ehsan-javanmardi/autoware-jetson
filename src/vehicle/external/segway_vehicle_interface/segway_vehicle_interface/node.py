@@ -21,6 +21,7 @@ Safety, in the order it matters:
 from __future__ import annotations
 
 import math
+import time
 
 import rclpy
 from rclpy.node import Node
@@ -31,6 +32,7 @@ from autoware_vehicle_msgs.msg import (
     ControlModeReport, GearCommand, GearReport, SteeringReport, VelocityReport,
 )
 from autoware_vehicle_msgs.srv import ControlModeCommand
+from std_srvs.srv import SetBool
 from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus, KeyValue
 from sensor_msgs.msg import BatteryState
 
@@ -85,6 +87,13 @@ class SegwayVehicleInterface(Node):
                                  self._on_gear_cmd, 1)
         self.create_service(ControlModeCommand, "/control/control_mode_request",
                             self._on_control_mode_request)
+        # Steering mode. Ackermann is the default because it is what the chassis does
+        # natively and what Autoware's planner assumes; in-situ rotation is a manoeuvre
+        # the operator asks for explicitly.
+        self._in_situ = False
+        self._spin_dir = None
+        self._spin_started = 0.0
+        self.create_service(SetBool, "~/set_in_situ_mode", self._on_set_in_situ)
 
         self.pub_velocity = self.create_publisher(VelocityReport, "/vehicle/status/velocity_status", 1)
         self.pub_steering = self.create_publisher(SteeringReport, "/vehicle/status/steering_status", 1)
@@ -135,10 +144,55 @@ class SegwayVehicleInterface(Node):
         # steering angle at low speed, where the two differ substantially.
         angular = linear * math.tan(self._last_steer) / self.wheel_base
         angular = max(-self.max_angular, min(self.max_angular, angular))
+
+        if self._in_situ and abs(linear) < 1e-3 and abs(self._last_steer) > 1e-3:
+            # Spin on the spot. enable_chassis_in_situ_rotation is called once per
+            # spin, not streamed, so re-issuing it every cycle would be wrong.
+            want = "left" if self._last_steer > 0 else "right"
+            if self._spin_dir != want:
+                self._stop_spin()
+                self.sdk.start_in_situ(want == "left", self.max_angular)
+                self._spin_dir = want
+                self._spin_started = time.time()
+            elif time.time() - self._spin_started > 5.0:
+                # The chassis raises a locked-rotor alarm around here. Stop before it
+                # does rather than after.
+                self._stop_spin()
+                self.get_logger().warn("in-situ rotation held over 5 s; stopping to "
+                                       "stay clear of the locked-rotor alarm")
+            return
+
+        self._stop_spin()
         self.sdk.set_cmd_vel(linear, angular)
 
     def _on_gear_cmd(self, msg: GearCommand) -> None:
         self._gear = msg.command
+
+    def _on_set_in_situ(self, req, resp):
+        if req.data and not self.allow_control:
+            resp.success, resp.message = False, "node is read-only"
+            return resp
+        self._stop_spin()
+        self._in_situ = bool(req.data)
+        if self._in_situ:
+            self.sdk.prepare_in_situ()
+            sw, scheme = self.sdk.rotation_available()
+            self.get_logger().warn(
+                f"in-situ rotation mode ON (chassis switch={sw} scheme={scheme}). "
+                "The manual warns of high rear-wheel current and a locked-rotor alarm "
+                "after ~5 s; this is a manoeuvre, not a mode to sit in.")
+        else:
+            self.get_logger().info("steering mode: Ackermann")
+        resp.success, resp.message = True, "in_situ" if self._in_situ else "ackermann"
+        return resp
+
+    def _stop_spin(self) -> None:
+        if self._spin_dir is not None and self.allow_control:
+            try:
+                self.sdk.stop_in_situ()
+            except SegwaySdkError:
+                pass
+        self._spin_dir = None
 
     def _on_control_mode_request(self, req, resp):
         want_auto = req.mode == ControlModeCommand.Request.AUTONOMOUS
@@ -171,6 +225,7 @@ class SegwayVehicleInterface(Node):
             return
         age = (self.get_clock().now() - self._last_cmd_time).nanoseconds / 1e9
         if age > self.command_timeout_s:
+            self._stop_spin()
             self.sdk.set_cmd_vel(0.0, 0.0)
             self.get_logger().warn(
                 f"no control_cmd for {age:.2f}s, commanding zero velocity",
@@ -262,6 +317,7 @@ class SegwayVehicleInterface(Node):
         self._autonomous = False
         if self.allow_control:
             try:
+                self._stop_spin()
                 self.sdk.set_cmd_vel(0.0, 0.0)
                 self.sdk.set_enable_ctrl(False)
             except SegwaySdkError:

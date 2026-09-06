@@ -31,6 +31,7 @@ from rclpy.qos import QoSProfile, ReliabilityPolicy
 from autoware_control_msgs.msg import Control
 from autoware_vehicle_msgs.msg import ControlModeReport
 from autoware_vehicle_msgs.srv import ControlModeCommand
+from std_srvs.srv import SetBool
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 LAUNCH_SCRIPT = os.path.join(REPO, "autoware_kashiwa.sh")
@@ -39,7 +40,15 @@ LAUNCH_SCRIPT = os.path.join(REPO, "autoware_kashiwa.sh")
 # thumb on a tablet is not the case to reach the chassis's 3.56 m/s in.
 DEFAULT_MAX_SPEED = 0.5
 HARD_MAX_SPEED = 1.5
-TURN_RATE = 0.6          # rad/s commanded for a left/right hold
+TURN_RATE = 0.6          # rad/s commanded for a left/right hold in in-situ mode
+
+# Ackermann is the default and is what the chassis does natively: the RMP steers its
+# front wheels and cannot turn tighter than a 1.36 m radius. A left/right hold
+# therefore has to DRIVE while steering - there is no such thing as turning in place
+# in this mode, and commanding one produces a crawl in a straight line, which is
+# exactly what the first version of this did.
+TURN_SPEED = 0.35        # m/s while steering in Ackermann mode
+MAX_STEER = 0.70         # rad, matches max_steer_angle in segway_description
 
 
 class ControlBackend(Node):
@@ -49,6 +58,7 @@ class ControlBackend(Node):
         self.lock = threading.Lock()
         self.autoware_proc: subprocess.Popen | None = None
         self.remote_enabled = False
+        self.in_situ = False
         self.max_speed = DEFAULT_MAX_SPEED
         self.control_mode = None
         self._last_drive = 0.0
@@ -57,6 +67,8 @@ class ControlBackend(Node):
         cmd_qos = QoSProfile(depth=1, reliability=ReliabilityPolicy.BEST_EFFORT)
         self.pub_control = self.create_publisher(Control, "/control/command/control_cmd", cmd_qos)
         self.cli_mode = self.create_client(ControlModeCommand, "/control/control_mode_request")
+        self.cli_in_situ = self.create_client(
+            SetBool, "/segway_vehicle_interface/set_in_situ_mode")
         self.create_subscription(ControlModeReport, "/vehicle/status/control_mode",
                                  lambda m: setattr(self, "control_mode", m.mode), 1)
 
@@ -131,22 +143,47 @@ class ControlBackend(Node):
         self.get_logger().warn(f"remote drive {'ARMED' if enabled else 'disarmed'}")
         return True, "ok"
 
-    def drive(self, direction: str, speed: float) -> tuple[bool, str]:
+    def drive(self, direction: str, speed: float, turn: float = 0.0) -> tuple[bool, str]:
+        """Set the held command. `turn` is -1..1 from the joystick's x axis."""
         if not self.remote_enabled:
             return False, "remote drive is not armed"
         v = max(0.0, min(HARD_MAX_SPEED, float(speed)))
-        if direction == "fwd":
-            self._drive = (v, 0.0)
-        elif direction == "back":
-            self._drive = (-v, 0.0)
+        turn = max(-1.0, min(1.0, float(turn)))
+
+        if direction == "stop":
+            self._drive = (0.0, 0.0)
+        elif self.in_situ and direction in ("left", "right"):
+            # Spin on the spot: zero linear, yaw only. The vehicle interface routes
+            # this to the chassis's in-situ API rather than to set_cmd_vel.
+            self._drive = (0.0, TURN_RATE if direction == "left" else -TURN_RATE)
         elif direction == "left":
-            self._drive = (0.0, TURN_RATE)
+            self._drive = (TURN_SPEED, TURN_SPEED * math.tan(MAX_STEER) / 0.456)
         elif direction == "right":
-            self._drive = (0.0, -TURN_RATE)
+            self._drive = (TURN_SPEED, -TURN_SPEED * math.tan(MAX_STEER) / 0.456)
+        elif direction == "fwd":
+            self._drive = (v, v * math.tan(turn * MAX_STEER) / 0.456)
+        elif direction == "back":
+            self._drive = (-v, -v * math.tan(turn * MAX_STEER) / 0.456)
         else:
             self._drive = (0.0, 0.0)
         self._last_drive = time.time()
         return True, "ok"
+
+    def set_steering_mode(self, in_situ: bool) -> tuple[bool, str]:
+        if not self.cli_in_situ.wait_for_service(timeout_sec=2.0):
+            return False, "vehicle interface is not running"
+        self._drive = (0.0, 0.0)
+        req = SetBool.Request(); req.data = bool(in_situ)
+        fut = self.cli_in_situ.call_async(req)
+        for _ in range(50):
+            if fut.done():
+                break
+            time.sleep(0.05)
+        if not fut.done() or fut.result() is None:
+            return False, "no response"
+        if fut.result().success:
+            self.in_situ = bool(in_situ)
+        return bool(fut.result().success), fut.result().message
 
     def estop(self) -> tuple[bool, str]:
         """Stop now. Zero the command, drop the arm, and hand back to MANUAL."""
@@ -178,19 +215,23 @@ class ControlBackend(Node):
         wheel_base = 0.456
         if abs(linear) > 1e-3:
             m.lateral.steering_tire_angle = float(math.atan(angular * wheel_base / linear))
+        elif angular != 0.0:
+            # Zero speed with a yaw rate means spin on the spot. There is no steering
+            # angle that expresses this, so the angle only carries the DIRECTION and
+            # the vehicle interface routes it to the chassis's in-situ API. An earlier
+            # version crept forward at 0.05 m/s instead, which on a chassis with a
+            # 1.36 m minimum turning radius is a yaw rate of 0.04 rad/s - visually a
+            # straight line, which is what it looked like.
+            m.lateral.steering_tire_angle = 0.5 if angular > 0 else -0.5
         else:
-            # Turning on the spot cannot be expressed as a steering angle at zero
-            # speed. Creep forward so the yaw rate is representable at all.
-            creep = 0.05
-            m.longitudinal.velocity = creep if angular != 0.0 else 0.0
-            m.lateral.steering_tire_angle = (
-                float(math.atan(angular * wheel_base / creep)) if angular else 0.0)
+            m.lateral.steering_tire_angle = 0.0
         self.pub_control.publish(m)
 
     def state(self) -> dict:
         return {
             "autoware_running": self.autoware_running(),
-            "remote": {"enabled": self.remote_enabled, "max_speed": self.max_speed},
+            "remote": {"enabled": self.remote_enabled, "max_speed": self.max_speed,
+                       "in_situ": self.in_situ},
             "control_mode": self.control_mode,
             "goals": {"points": [], "mode": "step", "repeat": False},
         }
