@@ -31,17 +31,12 @@
     <group if="$(var launch_gnss)">
       <push-ros-namespace namespace="gnss"/>
 
-      <include file="$(find-pkg-share ublox_dgnss)/launch/ublox_rover_hpposllh_navsatfix.launch.py">
+      <!-- gnss_rtk.launch.py, not ublox_dgnss's own rover launch. Two things have to
+           hold together or RTK cannot work, and neither can be set from outside:
+           the NavSatFix publisher must be RELIABLE, and the NTRIP client must be the
+           one that uplinks an NMEA GGA. See the file for why. -->
+      <include file="$(find-pkg-share segway_sensor_kit_launch)/launch/gnss_rtk.launch.py">
         <arg name="device_family" value="F9R"/>
-      </include>
-
-      <!-- Credentials come from NTRIP_USERNAME / NTRIP_PASSWORD; source ~/.ichimill.env
-           first. This repository is public, so they are not here. -->
-      <include file="$(find-pkg-share ublox_dgnss)/launch/ntrip_client.launch.py">
-        <arg name="use_https" value="false"/>
-        <arg name="host" value="ntrip.ales-corp.co.jp"/>
-        <arg name="port" value="2101"/>
-        <arg name="mountpoint" value="RTCM32M7S"/>
       </include>
     </group>
   </group>

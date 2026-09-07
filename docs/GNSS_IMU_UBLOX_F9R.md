@@ -279,6 +279,60 @@ Brought up 2026-09-05 on the Jetson, receiver on hub port `1-4.1`.
 | GNSS fix | **None** — `status: -1`, `gps_fix_ok: false`, lat/lon `0.0` |
 | RTK fix | **Not tested** — blocked on the above |
 
+### Why RTK needs the right NTRIP client, and a QoS override
+
+ichimill's mount points are **VRS**: the caster generates corrections for the receiver's
+own position and sends nothing until it is told where that is. The exchange has to be
+
+1. the client uplinks an NMEA **GGA** saying where the receiver is, then
+2. the caster streams **RTCM** for that location.
+
+`ublox_dgnss`'s own `ntrip_client` cannot do step 1 — it subscribes to nothing, so it has
+no idea where the robot is. It logs in, the caster answers, and both wait forever. The
+signature is a socket frozen at **179 bytes sent, 14 received**: a successful login
+(`ICY 200 OK` is exactly 14 bytes) followed by silence. It looks like an authentication or
+network problem and is neither.
+
+`ntrip_client` (the MicroStrain one, `ros-humble-ntrip-client`) subscribes to a
+`NavSatFix` and builds the GGA from it. Two things then have to be true, and both are set
+in [`gnss_rtk.launch.py`](../src/launcher/autoware_launch/sensor_kit/segway_sensor_kit_launch/segway_sensor_kit_launch/launch/gnss_rtk.launch.py):
+
+- **`rtcm_message_package: rtcm_msgs`.** It defaults to `mavros_msgs`, which is not
+  installed, and is not the type `ublox_dgnss_node` subscribes to either.
+- **The NavSatFix publisher must be RELIABLE.** `ublox_nav_sat_fix_hp` publishes
+  best_effort, the client subscribes RELIABLE, and ROS 2 will not connect the two — it
+  logs an incompatible-QoS warning and delivers nothing, so the client never sees a fix
+  and never sends a GGA. QoS is fixed when a publisher is created, so `ros2 param set`
+  afterwards has no effect; it has to be a launch parameter, and `ublox_dgnss`'s launch
+  file offers no way to pass one. That is why this workspace has its own rover launch.
+
+### Confirming RTK really works
+
+Four checks, in the order the data flows. Each one distinguishes a different failure:
+
+```bash
+# 1. corrections leaving the caster - byte count must GROW
+ss -tni | grep -A1 ':2101' | grep -o 'bytes_received:[0-9]*'
+
+# 2. corrections reaching the receiver chip, not just the client
+ros2 topic hz /sensing/gnss/ubx_rxm_rtcm
+
+# 3. the receiver APPLYING them
+ros2 topic echo /sensing/gnss/ubx_nav_status --once | grep -E 'diff_soln|diff_corr'
+
+# 4. carrier phase locked - the centimetre-level part
+ros2 topic echo /sensing/gnss/ubx_nav_status --once | grep carr_soln
+```
+
+Measured 2026-09-07, antenna indoors by a window, in rain: caster streaming ~7 kB/s,
+`ubx_rxm_rtcm` at 7.8 Hz, `diff_soln: true`, `diff_corr: true`, 11 satellites, horizontal
+accuracy 6.2 m, `carr_soln` not yet valid.
+
+That last line is the honest state: **DGNSS is working, RTK FIXED is not reached.** Carrier
+phase needs a clear sky view, and a window in the rain is close to the worst case for it.
+Expect `carr_soln` to go 1 (float) then 2 (fixed) outdoors, and the accuracy to fall from
+metres to centimetres with it.
+
 ### Why the correction stream stops at "connected"
 
 The caster accepted the login and then sent nothing more: byte counters sat frozen at
