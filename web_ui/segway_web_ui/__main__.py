@@ -72,6 +72,9 @@ def main(argv=None):
                 model.update_sensing(node.rates(), prober.results())
 
             node.create_timer(1.0, refresh)
+            # Hz history for the Hardware tab's graphs. Sampled on a timer rather than
+            # per message so the series is evenly spaced regardless of topic rate.
+            node.create_timer(1.0, node.sample_all_history)
             executor = SingleThreadedExecutor()
             executor.add_node(node)
             try:

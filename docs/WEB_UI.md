@@ -54,6 +54,45 @@ only the two web processes remain to launch.
 
 ## Service controls
 
+Three services, each independently controllable from the Hardware tab:
+
+| Service | What it is |
+|---|---|
+| `livox` | The Livox HAP driver |
+| `gnss` | The u-blox receiver and the NTRIP client |
+| `vehicle` | The chassis interface |
+
+Stopping or restarting one leaves the other two, the web UI, and Foxglove running.
+
+### Why that took a fix
+
+`segway.sh` used to start every service as a plain background job, which put them all in
+**segway.sh's own process group**. Stopping one service signalled that group — and took
+down segway.sh, the web UI, the control backend and every other service with it.
+
+Two independent protections now:
+
+- `segway.sh` starts each service under `setsid`, so each is its own process group.
+- `Managed` refuses to signal a group containing the backend itself, and falls back to
+  signalling individual PIDs. This one matters more, because it holds however the process
+  was started — including by hand.
+
+## Live sensor view
+
+The Sensors sub-tab shows a card per topic: a beating pulse, the current rate, a bar
+against the expected rate, and the last five minutes as a sparkline with the expected rate
+drawn as a dashed line.
+
+The history is kept in the backend, not the browser, sampled once a second. That is
+deliberate — it survives a page reload and a tablet waking from sleep, which is exactly
+when you want to know what the rate was doing while you were not watching. A restart shows
+up as a dip to zero and a recovery, so the graph answers "did it drop, or has it always
+been like that".
+
+Read it with `/api/rate_history?topic=<topic>`.
+
+
+
 The Hardware tab has Start / Stop / Restart for the **sensor drivers** and the **vehicle
 interface**, and the Autoware tab has **Stop everything** beside Stop.
 

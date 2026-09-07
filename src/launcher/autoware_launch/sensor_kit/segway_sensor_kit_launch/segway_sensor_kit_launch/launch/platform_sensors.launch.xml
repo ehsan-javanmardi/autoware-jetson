@@ -18,26 +18,12 @@
   <arg name="launch_lidar" default="true"/>
   <arg name="launch_gnss" default="true"/>
 
-  <group>
-    <push-ros-namespace namespace="sensing"/>
-
-    <!-- The Livox launch remaps to absolute /sensing/... topics, which a namespace
-         push does not affect, so it is correct either way. It is inside the group so
-         that everything the platform starts is described in one place. -->
-    <group if="$(var launch_lidar)">
-      <include file="$(find-pkg-share segway_sensor_kit_launch)/launch/livox_hap.launch.xml"/>
-    </group>
-
-    <group if="$(var launch_gnss)">
-      <push-ros-namespace namespace="gnss"/>
-
-      <!-- gnss_rtk.launch.py, not ublox_dgnss's own rover launch. Two things have to
-           hold together or RTK cannot work, and neither can be set from outside:
-           the NavSatFix publisher must be RELIABLE, and the NTRIP client must be the
-           one that uplinks an NMEA GGA. See the file for why. -->
-      <include file="$(find-pkg-share segway_sensor_kit_launch)/launch/gnss_rtk.launch.py">
-        <arg name="device_family" value="F9R"/>
-      </include>
-    </group>
+  <!-- Composed from the per-sensor files so that "all sensors" and "just the lidar"
+       cannot drift apart. The web UI drives the individual ones. -->
+  <group if="$(var launch_lidar)">
+    <include file="$(find-pkg-share segway_sensor_kit_launch)/launch/platform_livox.launch.xml"/>
+  </group>
+  <group if="$(var launch_gnss)">
+    <include file="$(find-pkg-share segway_sensor_kit_launch)/launch/platform_gnss.launch.xml"/>
   </group>
 </launch>

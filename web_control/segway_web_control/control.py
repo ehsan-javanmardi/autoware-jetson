@@ -74,11 +74,22 @@ class ControlBackend(Node):
         # listing the node's own ROS services, and assigning to it raises AttributeError
         # at construction.
         self.managed = {
-            "sensing": Managed(
-                self.get_logger(), "sensor drivers",
+            "livox": Managed(
+                self.get_logger(), "Livox HAP",
                 ["ros2", "launch", "segway_sensor_kit_launch",
-                 "platform_sensors.launch.xml"],
-                REPO, "platform_sensors.launch.xml", "sensors.log"),
+                 "platform_livox.launch.xml"],
+                REPO,
+                # The launch wrapper carries the file name; the driver node does not,
+                # so both are needed to reach every process this service owns.
+                ["platform_livox.launch.xml", "livox_ros_driver2_node"],
+                "livox.log"),
+            "gnss": Managed(
+                self.get_logger(), "GNSS + RTK",
+                ["ros2", "launch", "segway_sensor_kit_launch",
+                 "platform_gnss.launch.xml"],
+                REPO,
+                ["platform_gnss.launch.xml", "ntrip_ros.py"],
+                "gnss.log"),
             "vehicle": Managed(
                 self.get_logger(), "vehicle interface",
                 ["ros2", "launch", "segway_vehicle_interface",

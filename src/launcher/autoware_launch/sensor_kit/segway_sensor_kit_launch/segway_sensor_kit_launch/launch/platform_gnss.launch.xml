@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<!-- u-blox ZED-F9R plus the NTRIP client, under /sensing/gnss. Separated from the
+     lidar so each can be restarted on its own. See docs/WEB_UI.md -->
+<launch>
+  <group>
+    <push-ros-namespace namespace="sensing"/>
+    <group>
+      <push-ros-namespace namespace="gnss"/>
+      <include file="$(find-pkg-share segway_sensor_kit_launch)/launch/gnss_rtk.launch.py">
+        <arg name="device_family" value="F9R"/>
+      </include>
+    </group>
+  </group>
+</launch>

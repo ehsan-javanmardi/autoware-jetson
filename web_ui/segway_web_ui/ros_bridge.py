@@ -82,6 +82,19 @@ class RateMeter:
         self.seen_publisher = False
         self.last_msg_t = None
         self._lock = threading.Lock()
+        # Rolling Hz history, one sample a second for the last 5 minutes. Kept here
+        # rather than in the browser so it survives a page reload and a tablet going
+        # to sleep, which is exactly when you want to know what the rate was doing.
+        self.history = deque(maxlen=300)
+        self._last_sample = 0.0
+
+    def sample_history(self, hz):
+        """Record one point. Called on a timer, not per message."""
+        now = time.time()
+        if now - self._last_sample < 0.9:
+            return
+        self._last_sample = now
+        self.history.append((round(now, 1), round(hz, 2)))
 
     def attach(self):
         """Called when the subscription is actually created.
@@ -273,6 +286,19 @@ class HealthBridge(Node):
                 for n, ns in self.get_node_names_and_namespaces())
         except Exception:
             pass
+
+    def sample_all_history(self):
+        """One history point per watched topic. Driven by a 1 Hz timer."""
+        for topic, meter in self.meters.items():
+            try:
+                hz = meter.sample()[0]
+            except Exception:
+                continue
+            meter.sample_history(hz)
+
+    def history_of(self, topic):
+        m = self.meters.get(topic)
+        return list(m.history) if m else []
 
     def rates(self):
         return {topic: meter.sample() for topic, meter in self.meters.items()}

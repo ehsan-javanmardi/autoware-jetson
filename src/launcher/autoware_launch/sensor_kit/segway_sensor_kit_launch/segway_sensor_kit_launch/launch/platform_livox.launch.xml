@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<!-- Livox HAP driver alone, under /sensing. Separated from the GNSS so each can be
+     restarted on its own. See docs/WEB_UI.md -->
+<launch>
+  <group>
+    <push-ros-namespace namespace="sensing"/>
+    <include file="$(find-pkg-share segway_sensor_kit_launch)/launch/livox_hap.launch.xml"/>
+  </group>
+</launch>

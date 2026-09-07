@@ -59,7 +59,10 @@ fi
 PIDS=()
 start() {  # start <name> <logfile> <command...>
     local name=$1 log=$2; shift 2
-    "$@" > "$LOG_DIR/$log" 2>&1 &
+    # setsid so each service is its own process group. Without it every service
+    # shares this script's group, and stopping one from the web UI signals that group
+    # and takes the whole platform down - the web UI included.
+    setsid "$@" > "$LOG_DIR/$log" 2>&1 &
     PIDS+=($!)
     printf '  starting %-22s -> %s\n' "$name" "$LOG_DIR/$log"
 }
@@ -87,8 +90,12 @@ say "Segway platform"
 if [ "$WITH_SENSORS" = "true" ]; then
     # One launch file, because the namespace has to be right: it pushes /sensing so
     # the drivers land where Autoware's own sensing chain reads them.
-    start "sensor drivers"   sensors.log \
-        ros2 launch segway_sensor_kit_launch platform_sensors.launch.xml
+    # Started individually so each has its own process group and its own log, which
+    # is what lets the web UI stop or restart one without touching the other.
+    start "livox HAP"        livox.log \
+        ros2 launch segway_sensor_kit_launch platform_livox.launch.xml
+    start "GNSS + RTK"       gnss.log \
+        ros2 launch segway_sensor_kit_launch platform_gnss.launch.xml
 else
     warn "sensors skipped (WITH_SENSORS=false)"
 fi

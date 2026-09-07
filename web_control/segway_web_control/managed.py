@@ -49,33 +49,59 @@ def _pids_matching(pattern: str) -> list[int]:
 
 
 def _signal_all(pids, sig) -> None:
+    """Signal each process, preferring its group so a launch takes its children along.
+
+    Guarded against killing our own group. segway.sh starts each service as a plain
+    background job, which puts it in segway.sh's process group; signalling that group
+    once took down segway.sh, the web UI, the control backend and every other service
+    along with the one being stopped. The guard is here rather than only in segway.sh
+    because it has to hold however the process was started.
+    """
+    my_group = os.getpgid(0)
     for pid in pids:
         try:
-            os.killpg(os.getpgid(pid), sig)
+            group = os.getpgid(pid)
         except (ProcessLookupError, PermissionError):
+            group = None
+        if group is not None and group != my_group:
             try:
-                os.kill(pid, sig)
+                os.killpg(group, sig)
+                continue
             except (ProcessLookupError, PermissionError):
                 pass
+        # Shares our group, or the group could not be signalled: hit the process alone.
+        # Its children may be orphaned, which the caller reports rather than hides.
+        try:
+            os.kill(pid, sig)
+        except (ProcessLookupError, PermissionError):
+            pass
 
 
 class Managed:
     """One supervised launch."""
 
     def __init__(self, logger, name: str, cmd: list[str], cwd: str,
-                 pattern: str, log_name: str) -> None:
+                 pattern, log_name: str) -> None:
         self.logger = logger
         self.name = name
         self.cmd = cmd
         self.cwd = cwd
-        self.pattern = pattern
+        # One string or several. The composable-node containers a launch spawns do not
+        # carry the launch file name in their command line, so a single pattern often
+        # cannot reach every process a service owns.
+        self.patterns = [pattern] if isinstance(pattern, str) else list(pattern)
         self.log_path = os.path.join(os.path.expanduser("~/.segway/logs"), log_name)
         self.proc: subprocess.Popen | None = None
 
     # ------------------------------------------------------------------ state
 
     def pids(self) -> list[int]:
-        return _pids_matching(self.pattern)
+        seen = []
+        for pat in self.patterns:
+            for pid in _pids_matching(pat):
+                if pid not in seen:
+                    seen.append(pid)
+        return seen
 
     def running(self) -> bool:
         return bool(self.pids())

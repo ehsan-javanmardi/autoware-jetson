@@ -37,6 +37,12 @@ class Context:
     def header(self):
         return dict(self.bridge.header) if self.bridge else {}
 
+    def rate_history(self, topic):
+        """Recent Hz samples for one topic, oldest first."""
+        if not self.bridge or not topic:
+            return []
+        return self.bridge.history_of(topic)
+
     def vehicle_state(self):
         """Vehicle status read from ROS, never from the chassis directly.
 
@@ -207,6 +213,9 @@ def make_handler(ctx):
                 return self._json({"id": item, "history": ctx.model.history_of(item)})
             if route == "/api/ros_nodes":
                 return self._json({"nodes": ctx.node_names()})
+            if route == "/api/rate_history":
+                topic = (qs.get("topic") or [""])[0]
+                return self._json({"topic": topic, "series": ctx.rate_history(topic)})
             if route == "/api/vehicle":
                 return self._json(ctx.vehicle_state())
             if route == "/api/foxglove":

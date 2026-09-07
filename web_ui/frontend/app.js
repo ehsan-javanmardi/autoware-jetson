@@ -359,6 +359,91 @@ function notice(text, cls) {
   return '<div class="notice ' + (cls || '') + '">' + text + '</div>';
 }
 
+// ------------------------------------------------- live per-sensor rate cards
+// One card per watched topic: a beating pulse, the current Hz, a bar against the
+// expected rate, and the last few minutes as a sparkline. The history comes from
+// the backend rather than being accumulated in the browser, so it survives a
+// reload and a tablet waking from sleep -- which is when you most want to know
+// what the rate was doing while you were not looking.
+S.hist = S.hist || {};
+
+function sparkline(series, expect) {
+  if (!series || series.length < 2) {
+    return '<div class="muted" style="font-size:12px;margin-top:10px">collecting…</div>';
+  }
+  const vals = series.map(function (s) { return s[1]; });
+  const top = Math.max(expect || 0, Math.max.apply(null, vals), 1) * 1.15;
+  const n = series.length;
+  const pts = vals.map(function (v, i) {
+    const x = (i / (n - 1)) * 300;
+    const y = 42 - (Math.max(0, Math.min(top, v)) / top) * 40;
+    return x.toFixed(1) + ',' + y.toFixed(1);
+  }).join(' ');
+  // Colour the trace by the LAST value, so a line that has recovered does not stay red.
+  const last = vals[vals.length - 1];
+  const col = !expect ? 'var(--accent)'
+            : (last >= expect * 0.7 ? 'var(--ok)'
+            : (last >= expect * 0.4 ? 'var(--warn)' : 'var(--err)'));
+  const expY = expect ? (42 - (expect / top) * 40).toFixed(1) : null;
+  return '<div class="sparkwrap">' +
+    '<svg class="spark" viewBox="0 0 300 46" preserveAspectRatio="none">' +
+    (expY ? '<line class="exp" x1="0" y1="' + expY + '" x2="300" y2="' + expY + '"/>' : '') +
+    '<line class="axis" x1="0" y1="43" x2="300" y2="43"/>' +
+    '<polyline fill="none" stroke="' + col + '" stroke-width="1.8" points="' + pts + '"/>' +
+    '</svg>' +
+    '<span class="lbl">' + Math.round(n) + 's</span></div>';
+}
+
+function sensorCard(label, topic, hz, expect, seen) {
+  const ratio = expect ? hz / expect : (hz > 0 ? 1 : 0);
+  const cls = !seen ? 'off' : (ratio >= 0.7 ? 'on' : (ratio >= 0.4 ? 'warn' : 'off'));
+  const barCol = cls === 'on' ? 'var(--ok)' : (cls === 'warn' ? 'var(--warn)' : 'var(--err)');
+  const pct = Math.max(0, Math.min(100, ratio * 100));
+  return '<div class="sensor">' +
+    '<h3><span class="pulse ' + cls + '"></span>' + esc(label) + '</h3>' +
+    '<div class="meta">' + esc(topic) + '</div>' +
+    '<div class="figs"><div class="hz">' + (seen ? hz.toFixed(1) : '—') +
+      '<span class="u">Hz</span></div>' +
+      (expect ? '<div class="exp">expected ' + expect + '</div>' : '') +
+    '</div>' +
+    '<div class="livebar"><i style="width:' + pct + '%;background:' + barCol + '"></i></div>' +
+    sparkline(S.hist[topic], expect) +
+    '</div>';
+}
+
+function renderSensorCards() {
+  const d = S.devices;
+  if (!d) return '<div class="card"><p class="muted">loading…</p></div>';
+  let out = '';
+  (d.devices || []).forEach(function (dev) {
+    (dev.topics || []).forEach(function (tp) {
+      out += sensorCard(dev.name, tp.topic, tp.hz || 0, tp.expect_hz, tp.seen);
+    });
+  });
+  return out || '<div class="card"><p class="muted">no topics configured</p></div>';
+}
+
+// Fetch history for whatever is on screen. One request per topic, but only while
+// the Sensors sub-tab is open, and only every few seconds.
+let histTimer = null;
+async function pollHistory() {
+  const d = S.devices;
+  const topics = [];
+  (d && d.devices || []).forEach(function (dev) {
+    (dev.topics || []).forEach(function (tp) { topics.push(tp.topic); });
+  });
+  for (const tp of topics) {
+    try {
+      const r = await fetch('/api/rate_history?topic=' + encodeURIComponent(tp));
+      const j = await r.json();
+      S.hist[tp] = j.series || [];
+    } catch (e) { /* leave the previous series in place */ }
+  }
+  if (S.tab === 'hardware' && S.sub === 'sensors') render();
+  clearTimeout(histTimer);
+  if (S.tab === 'hardware' && S.sub === 'sensors') histTimer = setTimeout(pollHistory, 4000);
+}
+
 // --------------------------------------------------- service start/stop/restart
 // Restart is not stop-then-start in the browser: doing it here would leave the
 // robot without a vehicle interface if the page were closed between the two. The
@@ -662,7 +747,8 @@ function render() {
     // rendering it only once something is already running made it unreachable exactly
     // when it was needed.
     main.innerHTML = svcPanel() +
-      ((S.sub === 'chassis') ? renderChassis() : renderDevices());
+      ((S.sub === 'chassis') ? renderChassis()
+                             : (renderSensorCards() + renderDevices()));
   } else if (S.tab === 'foxglove') {
     main.innerHTML = renderFoxgloveTab();
   } else if (S.tab === 'autoware') {
@@ -700,7 +786,10 @@ function openModule(key) {
 // Which pollers each tab needs. Polling only while a tab is open keeps a tablet
 // left on the Foxglove tab from waking the ROS bridge every second.
 function pollFor(tab, sub) {
-  if (tab === 'hardware') { (sub === 'chassis') ? pollVehicle() : pollDevices(); }
+  if (tab === 'hardware') {
+    pollControl();
+    if (sub === 'chassis') { pollVehicle(); } else { pollDevices(); pollHistory(); }
+  }
   else if (tab === 'foxglove') pollFoxglove();
   else if (tab === 'autoware' || tab === 'remote') { pollControl(); pollVehicle(); }
 }
