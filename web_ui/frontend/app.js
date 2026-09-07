@@ -369,45 +369,76 @@ S.hist = S.hist || {};
 
 function sparkline(series, expect) {
   if (!series || series.length < 2) {
-    return '<div class="muted" style="font-size:12px;margin-top:10px">collecting…</div>';
+    return '<div class="sparkwrap"><div class="empty">collecting…</div></div>';
   }
   const vals = series.map(function (s) { return s[1]; });
   const top = Math.max(expect || 0, Math.max.apply(null, vals), 1) * 1.15;
-  const n = series.length;
-  const pts = vals.map(function (v, i) {
+  const n = vals.length;
+  const pt = function (v, i) {
     const x = (i / (n - 1)) * 300;
-    const y = 42 - (Math.max(0, Math.min(top, v)) / top) * 40;
+    const y = 38 - (Math.max(0, Math.min(top, v)) / top) * 34;
     return x.toFixed(1) + ',' + y.toFixed(1);
-  }).join(' ');
-  // Colour the trace by the LAST value, so a line that has recovered does not stay red.
-  const last = vals[vals.length - 1];
+  };
+  const line = vals.map(pt).join(' ');
+  // Filled area as well as the line: a thin trace on a small graph is hard to read
+  // at arm's length on a tablet.
+  const area = '0,39 ' + line + ' 300,39';
+  // Coloured by the LAST value, not the worst, so a rate that has recovered stops
+  // showing red for the whole retention window.
+  const last = vals[n - 1];
   const col = !expect ? 'var(--accent)'
             : (last >= expect * 0.7 ? 'var(--ok)'
             : (last >= expect * 0.4 ? 'var(--warn)' : 'var(--err)'));
-  const expY = expect ? (42 - (expect / top) * 40).toFixed(1) : null;
+  const expY = expect ? (38 - (expect / top) * 34).toFixed(1) : null;
   return '<div class="sparkwrap">' +
-    '<svg class="spark" viewBox="0 0 300 46" preserveAspectRatio="none">' +
+    '<svg class="spark" viewBox="0 0 300 42" preserveAspectRatio="none">' +
+    '<polygon points="' + area + '" fill="' + col + '" opacity="0.13"/>' +
     (expY ? '<line class="exp" x1="0" y1="' + expY + '" x2="300" y2="' + expY + '"/>' : '') +
-    '<line class="axis" x1="0" y1="43" x2="300" y2="43"/>' +
-    '<polyline fill="none" stroke="' + col + '" stroke-width="1.8" points="' + pts + '"/>' +
-    '</svg>' +
-    '<span class="lbl">' + Math.round(n) + 's</span></div>';
+    '<line class="axis" x1="0" y1="39.5" x2="300" y2="39.5"/>' +
+    '<polyline fill="none" stroke="' + col + '" stroke-width="1.8" points="' + line + '"/>' +
+    '</svg><span class="lbl">' + n + 's</span></div>';
 }
 
-function sensorCard(label, topic, hz, expect, seen) {
+// Which managed service owns a device, so its buttons can sit on its own card.
+// Derived from the inventory's group, not from the topic name: a topic can be
+// published by Autoware's sensing chain rather than by a driver we control, and
+// offering a Stop button for something we do not own would be a lie.
+function serviceFor(dev) {
+  const g = dev.group_key || '';
+  const n = (dev.name || '').toLowerCase();
+  if (g === 'lidar' && n.indexOf('livox') >= 0) return 'livox';
+  if (g === 'gnss') return 'gnss';
+  if (g === 'imu' && n.indexOf('livox') >= 0) return 'livox';
+  if (g === 'vehicle_if') return 'vehicle';
+  return null;   // pipeline topics, and any lidar we do not drive
+}
+
+function ctlButtons(svcKey) {
+  if (!svcKey) return '<span class="none">not directly controlled</span>';
+  const s = (S.autoware && S.autoware.services) || {};
+  const svc = s[svcKey];
+  if (!svc) return '<span class="none">control backend down</span>';
+  const up = svc.running;
+  return '<button class="go" data-act="svc_' + svcKey + '_start"' + (up ? ' disabled' : '') + '>Start</button>' +
+         '<button class="stop" data-act="svc_' + svcKey + '_stop"' + (up ? '' : ' disabled') + '>Stop</button>' +
+         '<button data-act="svc_' + svcKey + '_restart">Restart</button>';
+}
+
+function topicRow(tp) {
+  const hz = tp.hz || 0;
+  const expect = tp.expect_hz;
   const ratio = expect ? hz / expect : (hz > 0 ? 1 : 0);
-  const cls = !seen ? 'off' : (ratio >= 0.7 ? 'on' : (ratio >= 0.4 ? 'warn' : 'off'));
-  const barCol = cls === 'on' ? 'var(--ok)' : (cls === 'warn' ? 'var(--warn)' : 'var(--err)');
+  const col = !tp.seen ? 'var(--err)'
+            : (ratio >= 0.7 ? 'var(--ok)' : (ratio >= 0.4 ? 'var(--warn)' : 'var(--err)'));
   const pct = Math.max(0, Math.min(100, ratio * 100));
-  return '<div class="sensor">' +
-    '<h3><span class="pulse ' + cls + '"></span>' + esc(label) + '</h3>' +
-    '<div class="meta">' + esc(topic) + '</div>' +
-    '<div class="figs"><div class="hz">' + (seen ? hz.toFixed(1) : '—') +
+  const short = tp.topic.split('/').slice(-2).join('/');
+  return '<div class="trow">' +
+    '<div><div class="tname" title="' + esc(tp.topic) + '">' + esc(short) + '</div>' +
+    '<div class="figs"><div class="hz">' + (tp.seen ? hz.toFixed(1) : '—') +
       '<span class="u">Hz</span></div>' +
-      (expect ? '<div class="exp">expected ' + expect + '</div>' : '') +
-    '</div>' +
-    '<div class="livebar"><i style="width:' + pct + '%;background:' + barCol + '"></i></div>' +
-    sparkline(S.hist[topic], expect) +
+      (expect ? '<div class="exp">of ' + expect + '</div>' : '') + '</div>' +
+    '<div class="livebar"><i style="width:' + pct + '%;background:' + col + '"></i></div></div>' +
+    sparkline(S.hist[tp.topic], expect) +
     '</div>';
 }
 
@@ -416,9 +447,26 @@ function renderSensorCards() {
   if (!d) return '<div class="card"><p class="muted">loading…</p></div>';
   let out = '';
   (d.devices || []).forEach(function (dev) {
-    (dev.topics || []).forEach(function (tp) {
-      out += sensorCard(dev.name, tp.topic, tp.hz || 0, tp.expect_hz, tp.seen);
-    });
+    const topics = dev.topics || [];
+    const live = topics.some(function (tp) { return tp.seen; });
+    // Optional hardware that is simply not fitted stays out of the way rather than
+    // presenting as a fault; the Devices table below still lists it.
+    if (dev.optional && !live && dev.reachable !== true) return;
+    const svcKey = serviceFor(dev);
+    const cls = live ? 'on' : (dev.reachable === false ? 'off' : 'off');
+    const reach = dev.ip
+      ? esc(dev.ip) + (dev.reachable === true ? ' · reachable'
+         : (dev.reachable === false ? ' · unreachable' : ''))
+      : (dev.probe === 'none' ? 'no network probe' : '');
+    out += '<div class="sensor' + (live ? '' : ' down') + '">' +
+      '<div class="sensor-head">' +
+      '<div class="id"><div class="nm"><span class="pulse ' + cls + '"></span>' +
+        esc(dev.name) + '</div>' +
+        (reach ? '<div class="sub">' + reach + '</div>' : '') + '</div>' +
+      '<div class="ctl">' + ctlButtons(svcKey) + '</div>' +
+      '</div>' +
+      topics.map(topicRow).join('') +
+      '</div>';
   });
   return out || '<div class="card"><p class="muted">no topics configured</p></div>';
 }
@@ -746,9 +794,11 @@ function render() {
     // svcPanel first, and outside the sub-tab choice. It holds the Start buttons, so
     // rendering it only once something is already running made it unreachable exactly
     // when it was needed.
-    main.innerHTML = svcPanel() +
-      ((S.sub === 'chassis') ? renderChassis()
-                             : (renderSensorCards() + renderDevices()));
+    main.innerHTML = (S.sub === 'chassis')
+      ? (svcPanel() + renderChassis())
+      // Sensors: controls live on each card, so the shared table would only repeat
+      // them. It stays on the chassis sub-tab, which has no per-sensor cards.
+      : (((S.autoware && S.autoware.services) ? '' : svcPanel()) + renderSensorCards());
   } else if (S.tab === 'foxglove') {
     main.innerHTML = renderFoxgloveTab();
   } else if (S.tab === 'autoware') {

@@ -421,30 +421,77 @@ a.fox-btn.down { background: var(--panel-2); color: var(--faint); pointer-events
 }
 .modeswitch button.on { background: var(--accent); color: #fff; }
 
-/* --------------------------------------------------- per-sensor live cards */
+/* --------------------------------------------------- per-sensor live cards
+   Horizontal by design: identity on the left, rates in the middle, the live graph
+   and the controls on the right at a fixed width. A graph that grows with the
+   window ends up either a postage stamp or the whole screen, and on a tablet the
+   controls have to stay where the thumb is rather than scrolling away below. */
 
-.sensor { background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
-          padding: 14px 16px; box-shadow: var(--shadow); }
+.sensor {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+  padding: 0; box-shadow: var(--shadow); overflow: hidden;
+  transition: box-shadow .18s, border-color .18s;
+}
+.sensor:hover { box-shadow: var(--shadow-lg); }
 .sensor + .sensor { margin-top: 12px; }
-.sensor h3 { margin: 0 0 2px; font-size: 15px; display: flex; align-items: center; gap: 9px; }
-.sensor .meta { font-size: 12px; color: var(--dim); }
-.sensor .figs { display: flex; gap: 22px; align-items: baseline; margin-top: 8px; }
-.sensor .hz { font-size: 27px; font-weight: 650; font-variant-numeric: tabular-nums; }
-.sensor .hz .u { font-size: 13px; font-weight: 500; color: var(--dim); margin-left: 3px; }
-.sensor .exp { font-size: 12px; color: var(--dim); }
+.sensor.down { border-color: color-mix(in srgb, var(--err) 45%, var(--line)); }
 
-/* A live bar that moves with the rate, so a glance shows motion rather than a number
-   that may or may not be updating. */
-.livebar { height: 6px; border-radius: 3px; background: var(--panel-2); overflow: hidden; margin-top: 10px; }
+.sensor-head {
+  display: flex; align-items: center; gap: 14px;
+  padding: 13px 16px; border-bottom: 1px solid var(--line);
+  background: linear-gradient(180deg, var(--panel-2), var(--panel));
+}
+.sensor-head .id { min-width: 0; flex: 1; }
+.sensor-head .nm { font-size: 15px; font-weight: 620; display: flex; align-items: center; gap: 9px; }
+.sensor-head .sub { font-size: 12px; color: var(--dim); margin-top: 2px;
+                    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sensor-head .ctl { display: flex; gap: 7px; flex: none; }
+.sensor-head .ctl button {
+  appearance: none; border: 1px solid var(--line); background: var(--panel);
+  color: var(--fg); font: inherit; font-size: 12.5px; font-weight: 560;
+  padding: 8px 12px; min-height: 36px; border-radius: 8px; cursor: pointer;
+  transition: background .12s, border-color .12s, color .12s;
+}
+.sensor-head .ctl button:hover:not(:disabled) { border-color: var(--accent); background: var(--panel-2); }
+.sensor-head .ctl button:disabled { opacity: .35; cursor: not-allowed; }
+.sensor-head .ctl button.go:not(:disabled)   { color: var(--ok);  border-color: color-mix(in srgb, var(--ok) 40%, var(--line)); }
+.sensor-head .ctl button.stop:not(:disabled) { color: var(--err); border-color: color-mix(in srgb, var(--err) 40%, var(--line)); }
+.sensor-head .ctl .none { font-size: 12px; color: var(--faint); align-self: center; }
+
+/* One row per topic: figures left, graph right at a fixed width. */
+.trow {
+  display: grid; grid-template-columns: minmax(0, 1fr) 216px;
+  gap: 16px; align-items: center; padding: 11px 16px;
+}
+.trow + .trow { border-top: 1px dashed var(--line); }
+.trow .tname { font-size: 12px; color: var(--dim); overflow: hidden;
+               text-overflow: ellipsis; white-space: nowrap; }
+.trow .figs { display: flex; align-items: baseline; gap: 10px; margin-top: 3px; }
+.trow .hz { font-size: 23px; font-weight: 650; font-variant-numeric: tabular-nums; line-height: 1; }
+.trow .hz .u { font-size: 12px; font-weight: 500; color: var(--dim); margin-left: 3px; }
+.trow .exp { font-size: 11.5px; color: var(--faint); }
+
+.livebar { height: 5px; border-radius: 3px; background: var(--panel-2); overflow: hidden; margin-top: 8px; }
 .livebar > i { display: block; height: 100%; border-radius: 3px; transition: width .45s ease, background .45s; }
-.pulse { width: 9px; height: 9px; border-radius: 50%; flex: none; }
-.pulse.on  { background: var(--ok); animation: beat 1.1s ease-in-out infinite; }
-.pulse.warn{ background: var(--warn); animation: beat 1.1s ease-in-out infinite; }
-.pulse.off { background: var(--stale); }
-@keyframes beat { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: .35; transform: scale(.82); } }
 
-svg.spark { width: 100%; height: 46px; display: block; margin-top: 10px; }
+.pulse { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.pulse.on  { background: var(--ok);   box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 22%, transparent);  animation: beat 1.1s ease-in-out infinite; }
+.pulse.warn{ background: var(--warn); box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn) 22%, transparent); animation: beat 1.1s ease-in-out infinite; }
+.pulse.off { background: var(--stale); }
+@keyframes beat { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: .4; transform: scale(.8); } }
+
+.sparkwrap { position: relative; background: var(--panel-2);
+             border: 1px solid var(--line); border-radius: 8px; padding: 5px 6px 3px; }
+svg.spark { width: 100%; height: 42px; display: block; }
 svg.spark .axis { stroke: var(--line); stroke-width: 1; }
-svg.spark .exp  { stroke: var(--accent); stroke-width: 1; stroke-dasharray: 3 3; opacity: .5; }
-.sparkwrap { position: relative; }
-.sparkwrap .lbl { position: absolute; right: 2px; top: 0; font-size: 10.5px; color: var(--faint); }
+svg.spark .exp  { stroke: var(--accent); stroke-width: 1; stroke-dasharray: 3 3; opacity: .55; }
+.sparkwrap .lbl { position: absolute; right: 7px; top: 3px; font-size: 10px; color: var(--faint); }
+.sparkwrap .empty { font-size: 11.5px; color: var(--faint); text-align: center; padding: 13px 0; }
+
+@media (max-width: 760px) {
+  /* Below this the fixed graph column no longer fits beside the figures. */
+  .trow { grid-template-columns: 1fr; gap: 9px; }
+  .sensor-head { flex-wrap: wrap; }
+  .sensor-head .ctl { width: 100%; }
+  .sensor-head .ctl button { flex: 1; }
+}

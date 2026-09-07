@@ -79,9 +79,32 @@ Two independent protections now:
 
 ## Live sensor view
 
-The Sensors sub-tab shows a card per topic: a beating pulse, the current rate, a bar
-against the expected rate, and the last five minutes as a sparkline with the expected rate
-drawn as a dashed line.
+The Sensors sub-tab shows one card per sensor, laid out horizontally:
+
+```
+  ● Livox HAP                                    [Start] [Stop] [Restart]
+    192.168.1.110 · reachable
+  ────────────────────────────────────────────────────────────────────────
+    livox/points     9.8 Hz of 10   ▁▂▃▅▇      ┌──────────────┐
+    ▔▔▔▔▔▔▔▔▔▔▔▔▔▔                              │  ╱‾‾╲__╱‾‾   │  60s
+                                                └──────────────┘
+```
+
+Identity and controls on the left and right of the header, rates in the middle of each
+row, and the live graph in a fixed 216 px column on the right. Both choices are
+deliberate: a graph that grows with the window ends up either a postage stamp or the whole
+screen, and on a tablet the controls have to stay where the thumb is rather than
+scrolling away below the graphs.
+
+**The controls sit on the sensor they control.** Which service owns a device comes from
+the inventory's group, not from the topic name, because some `/sensing` topics are
+published by Autoware's chain rather than by a driver this platform runs. Those show
+*not directly controlled* rather than a Stop button that would do nothing — the point
+cloud preprocessing and the unfitted Ousters both land there.
+
+Optional hardware that is neither publishing nor reachable is left out of the cards
+entirely, so absent sensors do not read as faults. The Devices table on the same tab
+still lists everything.
 
 The history is kept in the backend, not the browser, sampled once a second. That is
 deliberate — it survives a page reload and a tablet waking from sleep, which is exactly
