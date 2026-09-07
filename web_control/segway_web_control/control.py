@@ -33,6 +33,8 @@ from autoware_vehicle_msgs.msg import ControlModeReport
 from autoware_vehicle_msgs.srv import ControlModeCommand
 from std_srvs.srv import SetBool
 
+from .managed import Managed
+
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 LAUNCH_SCRIPT = os.path.join(REPO, "autoware_kashiwa.sh")
 
@@ -65,6 +67,25 @@ class ControlBackend(Node):
         self._last_drive = 0.0
         self._drive = (0.0, 0.0)
 
+        # Supervised launches. The patterns match the real processes, so Stop works on
+        # what segway.sh started as well as on what this backend started.
+        #
+        # Named `managed`, not `services`: rclpy.Node.services is a read-only property
+        # listing the node's own ROS services, and assigning to it raises AttributeError
+        # at construction.
+        self.managed = {
+            "sensing": Managed(
+                self.get_logger(), "sensor drivers",
+                ["ros2", "launch", "segway_sensor_kit_launch",
+                 "platform_sensors.launch.xml"],
+                REPO, "platform_sensors.launch.xml", "sensors.log"),
+            "vehicle": Managed(
+                self.get_logger(), "vehicle interface",
+                ["ros2", "launch", "segway_vehicle_interface",
+                 "segway_vehicle_interface.launch.xml", "allow_control:=true"],
+                REPO, "segway_vehicle_interface", "vehicle.log"),
+        }
+
         cmd_qos = QoSProfile(depth=1, reliability=ReliabilityPolicy.BEST_EFFORT)
         self.pub_control = self.create_publisher(Control, "/control/command/control_cmd", cmd_qos)
         self.cli_mode = self.create_client(ControlModeCommand, "/control/control_mode_request")
@@ -82,6 +103,97 @@ class ControlBackend(Node):
     def autoware_running(self) -> bool:
         with self.lock:
             return self.autoware_proc is not None and self.autoware_proc.poll() is None
+
+    # Node-name prefixes that belong to Autoware rather than to the platform. Used to
+    # answer "is Autoware REALLY gone", which the launch process exiting does not settle:
+    # ros2 launch can exit while orphaned nodes keep running.
+    _PLATFORM_NODES = ("segway_web_ui", "segway_web_control", "segway_vehicle_interface",
+                       "livox", "ublox", "ntrip", "foxglove_bridge", "launch_ros",
+                       # The ros2 CLI daemon comes and goes with any ros2 command and is
+                       # nobody's node. Counting it meant "fully stopped" was never true.
+                       "ros2cli", "rosout")
+
+    # Namespaces that belong to Autoware. Used to decide what may be force-killed, and
+    # it is an ALLOW list on purpose: Autoware and the platform both run
+    # rclcpp_components/component_container processes, so the binary cannot tell them
+    # apart. An earlier version matched on the binary and killed the Livox and GNSS
+    # containers along with Autoware's.
+    _AUTOWARE_NS = ("/perception", "/planning", "/control", "/localization", "/map",
+                    "/system", "/simulation", "/awapi", "/api", "/diagnostics")
+
+    def autoware_nodes(self) -> list[str]:
+        out = []
+        for name, ns in self.get_node_names_and_namespaces():
+            full = (ns.rstrip("/") + "/" + name) if ns != "/" else "/" + name
+            if any(k in full for k in self._PLATFORM_NODES):
+                continue
+            if ns.startswith("/sensing") or ns.startswith("/gnss"):
+                # Sensing chain nodes belong to Autoware, but the platform's own drivers
+                # live there too; the prefix filter above has already removed those.
+                out.append(full)
+            elif ns != "/" or name not in ("rosout",):
+                out.append(full)
+        return sorted(out)
+
+    def stop_autoware_fully(self) -> tuple[bool, str]:
+        """Stop the launch, then kill anything of Autoware's that outlived it.
+
+        ros2 launch exiting is not the same as Autoware being gone: a node that ignores
+        SIGINT is simply orphaned, and the UI would then claim Autoware had stopped while
+        its nodes were still publishing.
+        """
+        self.stop_autoware()
+        time.sleep(2.0)
+        left = self.autoware_nodes()
+        if not left:
+            return True, "fully stopped"
+        killed = self._kill_autoware_processes()
+        time.sleep(2.0)
+        left = self.autoware_nodes()
+        if left:
+            return False, f"{len(left)} node(s) still running: {', '.join(left[:4])}"
+        self.get_logger().warn(f"Autoware fully stopped ({killed} process(es) killed)")
+        return True, f"fully stopped ({killed} killed)"
+
+    def _kill_autoware_processes(self) -> int:
+        """SIGKILL Autoware's surviving processes, and only Autoware's.
+
+        Decided per process by the __ns: it is passed to, not by the executable. Autoware
+        and the platform both run rclcpp_components/component_container, so a
+        binary-based match cannot distinguish them and would take the Livox and GNSS
+        containers down with Autoware.
+        """
+        killed = 0
+        try:
+            out = subprocess.run(["ps", "-eo", "pid,args", "--no-headers"],
+                                 capture_output=True, text=True)
+        except OSError:
+            return 0
+        me = os.getpid()
+        for line in out.stdout.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            head, _, args = line.partition(" ")
+            try:
+                pid = int(head)
+            except ValueError:
+                continue
+            if pid == me:
+                continue
+            ns = None
+            for tok in args.split():
+                if tok.startswith("__ns:="):
+                    ns = tok[len("__ns:="):]
+                    break
+            if ns is None or not any(ns.startswith(a) for a in self._AUTOWARE_NS):
+                continue
+            try:
+                os.killpg(os.getpgid(pid), signal.SIGKILL)
+                killed += 1
+            except (ProcessLookupError, PermissionError):
+                pass
+        return killed
 
     def _hardware_already_up(self) -> bool:
         """Is something else already driving the sensors and the chassis?
@@ -262,6 +374,8 @@ class ControlBackend(Node):
             "autoware_running": self.autoware_running(),
             "hardware_owned_by_platform": self._hardware_already_up(),
             "autoware_log": self.autoware_log,
+            "autoware_node_count": len(self.autoware_nodes()),
+            "services": {k: v.state() for k, v in self.managed.items()},
             "remote": {"enabled": self.remote_enabled, "max_speed": self.max_speed,
                        "in_situ": self.in_situ},
             "control_mode": self.control_mode,

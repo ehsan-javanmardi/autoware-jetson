@@ -52,6 +52,41 @@ first missing one — otherwise you start one, reload, and are told about the ne
 `./autoware_kashiwa.sh` starts the vehicle interface itself, so with the full stack running
 only the two web processes remain to launch.
 
+## Service controls
+
+The Hardware tab has Start / Stop / Restart for the **sensor drivers** and the **vehicle
+interface**, and the Autoware tab has **Stop everything** beside Stop.
+
+Three things about how they behave:
+
+**Stop works on processes it did not start.** Each service is identified by a pattern
+matching its real processes, so Stop acts on what `segway.sh` launched as readily as on
+what the backend launched. A Stop button that silently ignored a process it had not
+spawned would be worse than no button. The panel says which is which.
+
+**Restart happens in the backend, not the browser.** If the page did stop-then-start,
+closing it in between would leave the robot with no vehicle interface. The backend owns
+the sequence, including a pause so the chassis serial port and the Livox UDP ports are
+released before rebinding.
+
+**Stop everything is measured, not assumed.** `ros2 launch` exiting does not mean its
+nodes went with it — a node that ignores SIGINT is simply orphaned. The backend counts
+non-platform nodes in the graph, and the tile reads *fully stopped* only when that count
+is zero. If the launch has exited with nodes remaining, the tab says so.
+
+> [!WARNING]
+> **Do not restart the vehicle interface while the robot is moving.** The chassis holds
+> its last commanded velocity until its own watchdog expires, so the gap between stop and
+> start is not a safe stop.
+
+### Why the kill is scoped by namespace
+
+Autoware and the platform both run `rclcpp_components/component_container` processes, so
+the executable cannot tell them apart. Force-killing by binary took the Livox and GNSS
+containers down with Autoware, which is exactly the interference these controls exist to
+avoid. The backend now decides per process from the `__ns:=` it was given, against an
+allow list of Autoware's namespaces.
+
 ## Read-only by construction
 
 This process creates **no ROS publishers and no service clients**. It subscribes, it pings,

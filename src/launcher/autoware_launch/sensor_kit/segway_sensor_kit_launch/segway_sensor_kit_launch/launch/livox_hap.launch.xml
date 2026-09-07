@@ -29,7 +29,12 @@
     <param name="user_config_path" value="$(var user_config_path)"/>
     <param name="cmdline_input_bd_code" value="livox0000000001"/>
 
-    <remap from="/livox/lidar" to="$(var output_topic)"/>
-    <remap from="/livox/imu" to="$(var imu_topic)"/>
+    <!-- Relative from, absolute to. An absolute from only matches at the root: inside
+         platform_sensors.launch.xml this node runs under /sensing, where the driver's
+         own topics become /sensing/livox/lidar and an absolute /livox/lidar matches
+         nothing. The remap then silently does not apply and the cloud never reaches
+         the topic Autoware reads. -->
+    <remap from="livox/lidar" to="$(var output_topic)"/>
+    <remap from="livox/imu" to="$(var imu_topic)"/>
   </node>
 </launch>

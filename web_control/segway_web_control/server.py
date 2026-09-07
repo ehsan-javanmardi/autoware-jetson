@@ -80,6 +80,21 @@ def make_handler(backend):
                 ok, msg = backend.set_remote(not backend.remote_enabled)
             elif action == "drive_halt":
                 ok, msg = backend.drive("stop", 0.0)
+            elif action == "autoware_stop_all":
+                ok, msg = backend.stop_autoware_fully()
+            elif action.startswith("svc_"):
+                # svc_<service>_<verb>, e.g. svc_sensing_restart
+                try:
+                    _, svc, verb = action.split("_", 2)
+                except ValueError:
+                    return self._send({"ok": False, "error": f"malformed {action!r}"})
+                target = backend.managed.get(svc)
+                if target is None:
+                    ok, msg = False, f"unknown service {svc!r}"
+                elif verb not in ("start", "stop", "restart"):
+                    ok, msg = False, f"unknown verb {verb!r}"
+                else:
+                    ok, msg = getattr(target, verb)()
             elif action == "mode_ackermann":
                 ok, msg = backend.set_steering_mode(False)
             elif action == "mode_in_situ":

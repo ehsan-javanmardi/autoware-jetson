@@ -359,6 +359,35 @@ function notice(text, cls) {
   return '<div class="notice ' + (cls || '') + '">' + text + '</div>';
 }
 
+// --------------------------------------------------- service start/stop/restart
+// Restart is not stop-then-start in the browser: doing it here would leave the
+// robot without a vehicle interface if the page were closed between the two. The
+// backend owns the sequence, including the pause that lets the chassis serial port
+// and the Livox UDP ports be released before rebinding.
+function svcPanel() {
+  const s = (S.autoware && S.autoware.services) || null;
+  if (!s) return '';
+  const rows = Object.keys(s).map(function (k) {
+    const v = s[k];
+    const badge = v.running
+      ? '<span class="badge ok">running</span>'
+      : '<span class="badge err">stopped</span>';
+    const who = v.running ? (v.owned ? 'started here' : 'started by segway.sh') : '';
+    return '<tr><th>' + esc(v.name) + ' ' + badge +
+      '<div class="muted" style="font-weight:400;font-size:12px">' + esc(who) + '</div></th>' +
+      '<td><div class="btnrow" style="margin:0">' +
+      '<button class="act go" data-act="svc_' + k + '_start"' + (v.running ? ' disabled' : '') + '>Start</button>' +
+      '<button class="act stop" data-act="svc_' + k + '_stop"' + (v.running ? '' : ' disabled') + '>Stop</button>' +
+      '<button class="act" data-act="svc_' + k + '_restart">Restart</button>' +
+      '</div></td></tr>';
+  }).join('');
+  return '<div class="card" style="margin-top:14px"><h2>Services</h2>' +
+    '<table class="kv">' + rows + '</table>' +
+    '<p class="muted">Restarting the vehicle interface briefly leaves the robot with ' +
+    'no command source. The chassis holds its last velocity until its watchdog expires, ' +
+    'so do not restart it while the robot is moving.</p></div>';
+}
+
 // ------------------------------------------------------------ Hardware tab
 function renderChassis() {
   const v = S.vehicle;
@@ -390,6 +419,7 @@ function renderChassis() {
       'converter may have re-enumerated — the <code>/dev/segway</code> symlink handles ' +
       'that, but the chassis still has to be on.', 'err');
   }
+  out += svcPanel();
   out += '<div class="card" style="margin-top:14px"><h2>Detail</h2><table class="kv">' +
     '<tr><th>Data age</th><td>' + esc(v.age_s ?? '—') + ' s</td></tr>' +
     '<tr><th>Reported speed</th><td>' + (v.speed_mps ?? 0).toFixed(3) + ' m/s</td></tr>' +
@@ -474,9 +504,14 @@ function prereqs(what) {
 function renderAutowareRun() {
   const a = S.autoware || {};
   const up = a.autoware_running;
+  const nodes = a.autoware_node_count;
+  const fully = !up && nodes === 0;
   let out = '<div class="tiles">' +
-    tile('Autoware', up ? 'running' : 'not running',
-         up ? (a.node_count || 0) + ' nodes' : 'nothing launched', up ? 'ok' : 'off') +
+    tile('Autoware',
+         up ? 'running' : (fully ? 'fully stopped' : 'stopping'),
+         up ? nodes + ' nodes'
+            : (fully ? 'no nodes left' : nodes + ' node(s) still up'),
+         up ? 'ok' : (fully ? 'off' : 'warn')) +
     tile('Control backend', S.ctrl && S.ctrl.up ? 'running' : 'not running',
          'port 8843', S.ctrl && S.ctrl.up ? 'ok' : 'off') +
     '</div>';
@@ -494,7 +529,16 @@ function renderAutowareRun() {
     '<div class="btnrow">' +
     '<button class="act go" data-act="autoware_start"' + (up ? ' disabled' : '') + '>Start Autoware</button>' +
     '<button class="act stop" data-act="autoware_stop"' + (up ? '' : ' disabled') + '>Stop Autoware</button>' +
+    '<button class="act stop" data-act="autoware_stop_all">Stop everything</button>' +
     '</div>' +
+    (fully
+      ? '<p class="muted" style="margin-top:10px">Autoware is fully stopped. No Autoware ' +
+        'nodes remain; the platform is untouched.</p>'
+      : (!up && nodes > 0
+         ? '<div class="notice warn" style="margin-top:10px"><b>' + nodes + ' node(s) ' +
+           'are still running</b> after the launch exited. ros2 launch exiting does not ' +
+           'guarantee its nodes went with it. Use <b>Stop everything</b>.</div>'
+         : '')) +
     (a.autoware_log ? '<p class="muted" style="margin-top:10px">Output: <code>' +
       esc(a.autoware_log) + '</code> — check it if a start does not take.</p>' : '') +
     '</div>';
@@ -773,6 +817,10 @@ const CONFIRM = {
   engage: 'ENGAGE — the vehicle will begin to move. Continue?',
   mode_auto: 'Switch to AUTONOMOUS? This enables the motors.',
   remote_toggle: 'Toggle remote drive?',
+  svc_vehicle_stop: 'Stop the vehicle interface? The robot will have no command source.',
+  svc_vehicle_restart: 'Restart the vehicle interface? The robot will briefly have no command source.',
+  svc_sensing_stop: 'Stop the sensor drivers?',
+  autoware_stop_all: 'Stop Autoware and kill any node that outlived it?',
   run_goals: 'Run the destination sequence? The vehicle will move.',
 };
 
