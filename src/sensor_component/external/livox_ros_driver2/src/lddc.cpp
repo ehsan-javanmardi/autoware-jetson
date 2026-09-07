@@ -23,6 +23,8 @@
 //
 
 #include "lddc.h"
+
+#include <cmath>
 #include "comm/ldq.h"
 #include "comm/comm.h"
 
@@ -263,7 +265,18 @@ void Lddc::InitPointcloud2MsgHeader(PointCloud2& cloud) {
   cloud.header.frame_id.assign(frame_id_);
   cloud.height = 1;
   cloud.width = 0;
-  cloud.fields.resize(7);
+
+  // autoware::point_types::PointXYZIRCAEDT, 32 bytes per point.
+  //
+  // Autoware's pointcloud_preprocessor validates the field layout of every incoming
+  // cloud and ABORTS on a mismatch, so the vendor layout
+  // (x,y,z,intensity,tag,line,timestamp) makes every downstream node discard the cloud
+  // while the driver itself looks healthy. Emitting Autoware's layout here rather than
+  // converting downstream also avoids serialising 1.4 MB twice per cloud, which on a
+  // Jetson Orin running the full stack was the difference between 10 Hz and 1 Hz.
+  //
+  // This mirrors autoware_ouster_ros, which solves the same problem for the Ouster.
+  cloud.fields.resize(10);
   cloud.fields[0].offset = 0;
   cloud.fields[0].name = "x";
   cloud.fields[0].count = 1;
@@ -279,26 +292,38 @@ void Lddc::InitPointcloud2MsgHeader(PointCloud2& cloud) {
   cloud.fields[3].offset = 12;
   cloud.fields[3].name = "intensity";
   cloud.fields[3].count = 1;
-  cloud.fields[3].datatype = PointField::FLOAT32;
-  cloud.fields[4].offset = 16;
-  cloud.fields[4].name = "tag";
+  cloud.fields[3].datatype = PointField::UINT8;
+  cloud.fields[4].offset = 13;
+  cloud.fields[4].name = "return_type";
   cloud.fields[4].count = 1;
   cloud.fields[4].datatype = PointField::UINT8;
-  cloud.fields[5].offset = 17;
-  cloud.fields[5].name = "line";
+  cloud.fields[5].offset = 14;
+  cloud.fields[5].name = "channel";
   cloud.fields[5].count = 1;
-  cloud.fields[5].datatype = PointField::UINT8;
-  cloud.fields[6].offset = 18;
-  cloud.fields[6].name = "timestamp";
+  cloud.fields[5].datatype = PointField::UINT16;
+  cloud.fields[6].offset = 16;
+  cloud.fields[6].name = "azimuth";
   cloud.fields[6].count = 1;
-  cloud.fields[6].datatype = PointField::FLOAT64;
-  cloud.point_step = sizeof(LivoxPointXyzrtlt);
+  cloud.fields[6].datatype = PointField::FLOAT32;
+  cloud.fields[7].offset = 20;
+  cloud.fields[7].name = "elevation";
+  cloud.fields[7].count = 1;
+  cloud.fields[7].datatype = PointField::FLOAT32;
+  cloud.fields[8].offset = 24;
+  cloud.fields[8].name = "distance";
+  cloud.fields[8].count = 1;
+  cloud.fields[8].datatype = PointField::FLOAT32;
+  cloud.fields[9].offset = 28;
+  cloud.fields[9].name = "time_stamp";
+  cloud.fields[9].count = 1;
+  cloud.fields[9].datatype = PointField::UINT32;
+  cloud.point_step = sizeof(AutowarePointXYZIRCAEDT);
 }
 
 void Lddc::InitPointcloud2Msg(const StoragePacket& pkg, PointCloud2& cloud, uint64_t& timestamp) {
   InitPointcloud2MsgHeader(cloud);
 
-  cloud.point_step = sizeof(LivoxPointXyzrtlt);
+  cloud.point_step = sizeof(AutowarePointXYZIRCAEDT);
 
   cloud.width = pkg.points_num;
   cloud.row_step = cloud.width * cloud.point_step;
@@ -316,20 +341,45 @@ void Lddc::InitPointcloud2Msg(const StoragePacket& pkg, PointCloud2& cloud, uint
       cloud.header.stamp = rclcpp::Time(timestamp);
   #endif
 
-  std::vector<LivoxPointXyzrtlt> points;
+  // Written straight into the message buffer: the vendor code built a temporary
+  // vector and memcpy'd it, which doubles the copies for no benefit.
+  cloud.data.resize(static_cast<size_t>(pkg.points_num) * sizeof(AutowarePointXYZIRCAEDT));
+  auto * out = reinterpret_cast<AutowarePointXYZIRCAEDT *>(cloud.data.data());
+
   for (size_t i = 0; i < pkg.points_num; ++i) {
-    LivoxPointXyzrtlt point;
-    point.x = pkg.points[i].x;
-    point.y = pkg.points[i].y;
-    point.z = pkg.points[i].z;
-    point.reflectivity = pkg.points[i].intensity;
-    point.tag = pkg.points[i].tag;
-    point.line = pkg.points[i].line;
-    point.timestamp = static_cast<double>(pkg.points[i].offset_time);
-    points.push_back(std::move(point));
+    const auto & src = pkg.points[i];
+    AutowarePointXYZIRCAEDT & dst = out[i];
+
+    dst.x = src.x;
+    dst.y = src.y;
+    dst.z = src.z;
+
+    // Livox reflectivity is 0..255 already, but the field is wider upstream, so clamp
+    // rather than truncate silently.
+    const float refl = static_cast<float>(src.intensity);
+    dst.intensity = static_cast<uint8_t>(refl < 0.0F ? 0.0F : (refl > 255.0F ? 255.0F : refl));
+
+    // The low bits of the Livox tag carry the return number. The taxonomies are not
+    // identical, so treat this as an indicator rather than a strict equivalent.
+    dst.return_type = static_cast<uint8_t>(src.tag & 0x03);
+    dst.channel = static_cast<uint16_t>(src.line);
+
+    // Livox does not report polar coordinates, so they are derived here. Computed
+    // unconditionally: several Autoware filters and the ML detectors read them as
+    // input features, and zero-filling would make those produce plausible-looking
+    // wrong output rather than fail. In C++ over a buffer already being written the
+    // cost is negligible - it was only prohibitive in the Python converter this
+    // replaces.
+    const float x = dst.x, y = dst.y, z = dst.z;
+    dst.distance = std::sqrt(x * x + y * y + z * z);
+    dst.azimuth = std::atan2(y, x);
+    const float planar = std::sqrt(x * x + y * y);
+    dst.elevation = std::atan2(z, planar);
+
+    // Autoware wants nanoseconds since the cloud header; offset_time is already
+    // relative to base_time, which is what the header carries.
+    dst.time_stamp = static_cast<uint32_t>(src.offset_time);
   }
-  cloud.data.resize(pkg.points_num * sizeof(LivoxPointXyzrtlt));
-  memcpy(cloud.data.data(), points.data(), pkg.points_num * sizeof(LivoxPointXyzrtlt));
 }
 
 void Lddc::PublishPointcloud2Data(const uint8_t index, const uint64_t timestamp, const PointCloud2& cloud) {

@@ -92,7 +92,7 @@ consumer ignores it, check the message type first.
 The cloud carries `x, y, z, intensity, tag, line, timestamp` at a 26-byte point step.
 `tag` is the HAP return classification that `autoware_livox_tag_filter` consumes.
 
-## Autoware rejects the driver's point layout
+## The driver emits Autoware's point type
 
 Autoware's `pointcloud_preprocessor` validates the field layout of every cloud and
 **aborts** on a mismatch:
@@ -101,35 +101,46 @@ Autoware's `pointcloud_preprocessor` validates the field layout of every cloud a
 The pointcloud layout is not compatible with PointXYZIRCAEDT. Aborting
 ```
 
-The driver publishes `x, y, z, intensity, tag, line, timestamp`. Autoware wants
-`x, y, z, intensity, return_type, channel, azimuth, elevation, distance, time_stamp`
-(32 bytes per point, from `autoware_point_types/types.hpp`).
-
 The failure is silent in the worst way: the driver publishes correctly at 10 Hz, the crop
 box loads and advertises its output topic, and `/sensing/lidar/concatenated/pointcloud`
-sits at 0 Hz with a publisher attached. Nothing downstream of the point cloud works, and
-neither the driver nor the dashboard shows a fault.
+sits at 0 Hz **with a publisher attached**. Nothing downstream works, and neither the
+driver nor the dashboard reports a fault.
 
-`scripts/livox_to_autoware_points.py` converts between them, so the chain is now
+This driver is therefore modified to publish `autoware::point_types::PointXYZIRCAEDT`
+directly, the same approach `autoware_ouster_ros` takes for the Ouster:
 
-```
-driver -> /sensing/lidar/top/livox/points_raw -> converter -> /sensing/lidar/top/livox/points
-```
+| Field | Offset | Source |
+|---|---|---|
+| `x`, `y`, `z` | 0, 4, 8 | Livox, unchanged |
+| `intensity` | 12 | Livox reflectivity, clamped to `uint8` |
+| `return_type` | 13 | low bits of the Livox `tag` |
+| `channel` | 14 | Livox `line` |
+| `azimuth` | 16 | **derived**, `atan2(y, x)` |
+| `elevation` | 20 | **derived**, `atan2(z, hypot(x, y))` |
+| `distance` | 24 | **derived**, `sqrt(x²+y²+z²)` |
+| `time_stamp` | 28 | Livox `offset_time`, ns from the cloud header |
 
-> [!WARNING]
-> **The converter is a bottleneck and this is not finished.** It holds ~85 % of one core
-> and the chain measures 4.3 Hz in, 2.1 Hz out, 0.9 Hz concatenated, against 10 Hz from
-> the sensor. Caching the input dtype and making the azimuth/elevation `arctan2` opt-in
-> (`compute_angles`, default false) did not materially help: at ~1.4 MB per cloud the
-> cost is in the strided structured-array writes and the final `tobytes()`, which Python
-> cannot avoid.
->
-> **This needs a C++ component** to run at sensor rate. Until then the lidar is usable
-> for looking at, not for driving on.
->
-> Note the driver's own `points_raw` also drops to 4.3 Hz under this load. The Orin has
-> 8 cores and was running the full Autoware stack at the time, so the converter is
-> competing for CPU rather than being the only cause.
+32 bytes per point. The offsets are checked by name and position upstream, so
+`AutowarePointXYZIRCAEDT` in `src/comm/comm.h` must stay inside the `#pragma pack(1)`
+region.
+
+### Why in the driver, and why the angles are computed
+
+An earlier attempt used a separate Python converter node. It could not keep up: the cloud
+crossed DDS twice, ~1.4 MB each way, and the node held ~85 % of a core while the chain
+degraded from 10 Hz at the sensor to 0.9 Hz concatenated. Building the cloud in the right
+layout once, in the driver, removes the round trip entirely rather than optimising it.
+
+The polar fields are computed rather than zero-filled. An audit found nothing in the
+*currently configured* pipeline that reads them — `ScanGroundFilter` derives its own from
+x/y — but `ring_outlier_filter`, the polar-voxel filters and the ML detectors
+(`lidar_frnet`, `ptv3`) all declare layouts containing them, and are switchable by
+config. Zero-filled angles would make those produce plausible-looking wrong output rather
+than fail. In C++, over a buffer already being written, three extra operations per point
+cost far less than a latent trap for whoever enables a detector later.
+
+The vendor code also built a temporary `std::vector` and `memcpy`'d it into the message;
+the points are now written straight into the message buffer.
 
 ## Extrinsics are a placeholder
 

@@ -99,4 +99,5 @@ ros2 launch autoware_launch autoware.launch.xml \
     pointcloud_map_file:="$PCD_FILE" \
     lanelet2_map_file:="$LANELET_FILE" \
     log_level:=debug \
+    rviz:=false \
     "${EXTRA_ARGS[@]}"

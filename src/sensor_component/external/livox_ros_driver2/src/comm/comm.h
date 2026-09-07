@@ -157,6 +157,30 @@ typedef struct {
   double timestamp;   /**< Timestamp of point*/
 } LivoxPointXyzrtlt;
 
+/**
+ * autoware::point_types::PointXYZIRCAEDT, byte for byte.
+ *
+ * Autoware's pointcloud_preprocessor validates the field layout of every cloud and
+ * aborts on a mismatch, so this layout is not a preference - it is the only one the
+ * rest of the stack will accept. Defined here rather than by including
+ * autoware_point_types so this driver keeps no build dependency on Autoware.
+ *
+ * Kept inside the #pragma pack(1) region above: the field offsets Autoware checks are
+ * 0,4,8,12,13,14,16,20,24,28 with a 32 byte stride, which only holds unpadded.
+ */
+typedef struct {
+  float x;              /**< X axis, Unit:m */
+  float y;              /**< Y axis, Unit:m */
+  float z;              /**< Z axis, Unit:m */
+  uint8_t intensity;    /**< Reflectivity, 0..255 */
+  uint8_t return_type;  /**< Return number, from the Livox tag */
+  uint16_t channel;     /**< Laser line id */
+  float azimuth;        /**< atan2(y, x), rad - derived, Livox does not report it */
+  float elevation;      /**< atan2(z, hypot(x, y)), rad - derived */
+  float distance;       /**< Range, m - derived */
+  uint32_t time_stamp;  /**< ns since the cloud header */
+} AutowarePointXYZIRCAEDT;
+
 typedef struct {
   float x;
   float y;
