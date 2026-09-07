@@ -366,7 +366,14 @@ function notice(text, cls) {
 // and the Livox UDP ports be released before rebinding.
 function svcPanel() {
   const s = (S.autoware && S.autoware.services) || null;
-  if (!s) return '';
+  if (!s) {
+    // No backend, so no buttons are possible. Say why, rather than showing an empty
+    // tab and leaving the operator to guess.
+    return '<div class="notice warn"><b>The control backend is not running</b>, so the ' +
+      'sensors and the chassis cannot be started or stopped from here.<br><br>' +
+      '<code>ros2 launch segway_web_control web_control.launch.xml</code><br><br>' +
+      '<code>./segway.sh</code> starts it along with everything else.</div>';
+  }
   const rows = Object.keys(s).map(function (k) {
     const v = s[k];
     const badge = v.running
@@ -393,12 +400,8 @@ function renderChassis() {
   const v = S.vehicle;
   if (!v) return '<div class="card"><p class="muted">loading…</p></div>';
   if (!v.running) {
-    return notice('<b>The vehicle interface is not running.</b> Nothing is reading the ' +
-      'Segway, so there is no chassis data to show.' +
-      '<br><br>Start it from a terminal:<br>' +
-      '<code>ros2 launch segway_vehicle_interface segway_vehicle_interface.launch.xml</code>' +
-      '<br><br>Without <code>allow_control:=true</code> it publishes status and cannot ' +
-      'move the base.', 'warn');
+    return notice('<b>The vehicle interface is not running</b>, so there is no chassis ' +
+      'data to show. Start it with the button above.', 'warn');
   }
   const present = v.chassis_present;
   const soc = v.battery_percent == null ? 0 : v.battery_percent;
@@ -419,7 +422,6 @@ function renderChassis() {
       'converter may have re-enumerated — the <code>/dev/segway</code> symlink handles ' +
       'that, but the chassis still has to be on.', 'err');
   }
-  out += svcPanel();
   out += '<div class="card" style="margin-top:14px"><h2>Detail</h2><table class="kv">' +
     '<tr><th>Data age</th><td>' + esc(v.age_s ?? '—') + ' s</td></tr>' +
     '<tr><th>Reported speed</th><td>' + (v.speed_mps ?? 0).toFixed(3) + ' m/s</td></tr>' +
@@ -656,7 +658,11 @@ function render() {
   if (railCard) railCard.style.display = wantRail ? '' : 'none';
 
   if (S.tab === 'hardware') {
-    main.innerHTML = (S.sub === 'chassis') ? renderChassis() : renderDevices();
+    // svcPanel first, and outside the sub-tab choice. It holds the Start buttons, so
+    // rendering it only once something is already running made it unreachable exactly
+    // when it was needed.
+    main.innerHTML = svcPanel() +
+      ((S.sub === 'chassis') ? renderChassis() : renderDevices());
   } else if (S.tab === 'foxglove') {
     main.innerHTML = renderFoxgloveTab();
   } else if (S.tab === 'autoware') {
