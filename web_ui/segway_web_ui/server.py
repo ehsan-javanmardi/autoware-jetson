@@ -98,6 +98,9 @@ class Context:
         for group in self.cfg.get("groups", []):
             for dev in group.get("devices", []):
                 ip = dev.get("ip")
+                # Exposed so the UI can hide hardware that is deliberately absent
+                # rather than presenting an unfitted sensor as a fault.
+                optional = bool(dev.get("optional"))
                 reachable, rtt, probe_t = probes.get(ip, (None, None, None))
                 topics = []
                 for t in dev.get("topics", []):
@@ -114,6 +117,7 @@ class Context:
                     "group": group.get("label", group["key"]),
                     "group_key": group["key"],
                     "name": dev["name"], "ip": ip,
+                    "optional": optional,
                     "probe": dev.get("probe", "icmp"),
                     "profile": dev.get("profile"),
                     "reachable": reachable, "rtt_ms": round(rtt, 1) if rtt else None,

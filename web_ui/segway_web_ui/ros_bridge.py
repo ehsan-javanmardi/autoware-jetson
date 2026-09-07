@@ -188,6 +188,10 @@ class HealthBridge(Node):
                 for t in dev.get("topics", []):
                     self.meters.setdefault(t["topic"], RateMeter(self.window))
         self._subscribed = set()
+        # Kept so a subscription that has gone stale can be destroyed and
+        # remade. Restarting a sensor is a first-class web UI action now, so a
+        # monitor that silently stops counting after one is worse than useless.
+        self._subs = {}
 
         self.create_timer(2.0, self._discover)
         self.create_timer(2.0, self._refresh_nodes)
@@ -267,7 +271,7 @@ class HealthBridge(Node):
                 continue
             try:
                 msg_cls = get_message(types[0])
-                self.create_subscription(
+                self._subs[topic] = self.create_subscription(
                     msg_cls, topic,
                     lambda raw, m=meter: m.record(len(raw)),
                     _QOS_SAMPLE, raw=True)
@@ -278,6 +282,37 @@ class HealthBridge(Node):
             meter.seen_publisher = True
             self._subscribed.add(topic)
             self.get_logger().info("sampling %s (%s)" % (topic, types[0]))
+
+        self._resubscribe_stale(available)
+
+    def _resubscribe_stale(self, available):
+        """Rebuild subscriptions that have a live publisher but no traffic.
+
+        A raw subscription does not reliably re-match a publisher that went away and
+        came back, which is exactly what a sensor Restart does. The symptom is a topic
+        reporting 0 Hz while `ros2 topic hz` on the same topic reads its full rate, so
+        the dashboard blames the sensor for a fault of its own.
+        """
+        now = time.time()
+        for topic, meter in self.meters.items():
+            if topic not in self._subscribed or not available.get(topic):
+                continue
+            hz, _, _, _, warming = meter.sample()
+            if warming or hz > 0.0:
+                continue
+            last = meter.last_msg_t or meter.started
+            if now - last < 8.0:
+                continue
+            sub = self._subs.pop(topic, None)
+            if sub is not None:
+                try:
+                    self.destroy_subscription(sub)
+                except Exception:
+                    pass
+            self._subscribed.discard(topic)
+            meter.seen_publisher = False
+            self.get_logger().warn(
+                "%s has a publisher but no traffic; re-subscribing" % topic)
 
     def _refresh_nodes(self):
         try:

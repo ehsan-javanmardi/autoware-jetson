@@ -92,6 +92,45 @@ consumer ignores it, check the message type first.
 The cloud carries `x, y, z, intensity, tag, line, timestamp` at a 26-byte point step.
 `tag` is the HAP return classification that `autoware_livox_tag_filter` consumes.
 
+## Autoware rejects the driver's point layout
+
+Autoware's `pointcloud_preprocessor` validates the field layout of every cloud and
+**aborts** on a mismatch:
+
+```
+The pointcloud layout is not compatible with PointXYZIRCAEDT. Aborting
+```
+
+The driver publishes `x, y, z, intensity, tag, line, timestamp`. Autoware wants
+`x, y, z, intensity, return_type, channel, azimuth, elevation, distance, time_stamp`
+(32 bytes per point, from `autoware_point_types/types.hpp`).
+
+The failure is silent in the worst way: the driver publishes correctly at 10 Hz, the crop
+box loads and advertises its output topic, and `/sensing/lidar/concatenated/pointcloud`
+sits at 0 Hz with a publisher attached. Nothing downstream of the point cloud works, and
+neither the driver nor the dashboard shows a fault.
+
+`scripts/livox_to_autoware_points.py` converts between them, so the chain is now
+
+```
+driver -> /sensing/lidar/top/livox/points_raw -> converter -> /sensing/lidar/top/livox/points
+```
+
+> [!WARNING]
+> **The converter is a bottleneck and this is not finished.** It holds ~85 % of one core
+> and the chain measures 4.3 Hz in, 2.1 Hz out, 0.9 Hz concatenated, against 10 Hz from
+> the sensor. Caching the input dtype and making the azimuth/elevation `arctan2` opt-in
+> (`compute_angles`, default false) did not materially help: at ~1.4 MB per cloud the
+> cost is in the strided structured-array writes and the final `tobytes()`, which Python
+> cannot avoid.
+>
+> **This needs a C++ component** to run at sensor rate. Until then the lidar is usable
+> for looking at, not for driving on.
+>
+> Note the driver's own `points_raw` also drops to 4.3 Hz under this load. The Orin has
+> 8 cores and was running the full Autoware stack at the time, so the converter is
+> competing for CPU rather than being the only cause.
+
 ## Extrinsics are a placeholder
 
 `livox_frame` is currently at the sensor-kit origin with zero rotation, in
